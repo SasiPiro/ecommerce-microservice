@@ -13,7 +13,9 @@
 		<maven.compiler.target>21</maven.compiler.target>
   </properties>
   
-  <modules></modules>
+  <modules>
+  		<module>user-service</module>
+  </modules>
 
   
 </project>
