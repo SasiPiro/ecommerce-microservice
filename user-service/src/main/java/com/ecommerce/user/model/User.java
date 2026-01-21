@@ -41,7 +41,7 @@ public class User {
     private UserRole userRole;
 
 
-    public User(Long id, String username, String email, String password, String firstName, String lastName, String phone, boolean active, UserRole userRole) {
+    public User(Long id, String username, String email, String password, String firstName, String lastName, String phone, UserRole userRole) {
         this();
         this.id = id;
         this.username = username;
@@ -151,6 +151,9 @@ public class User {
 	public void preUpdate() {
 		this.updatedAt = LocalDateTime.now();
 	}
+
+    @PrePersist
+    public void prePersist() {this.createdAt = LocalDateTime.now();}
 
     public enum UserRole {
         CUSTOMER,
