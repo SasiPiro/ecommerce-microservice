@@ -33,7 +33,6 @@ public class UserMapper {
         newUser.setLastName(userRequestDTO.lastName());
         newUser.setPhone(userRequestDTO.phone());
         newUser.setUserRole(User.UserRole.CUSTOMER); // Default role
-        // TODO: Ricordati di hashare la password qui!
         newUser.setPassword(userRequestDTO.password());
         return newUser;
     }
@@ -56,7 +55,6 @@ public class UserMapper {
     public User updateUserFromPutDTO(UserPutRequestDTO dto , User user) {
         user.setUsername(dto.username());
         user.setEmail(dto.email());
-//        user.setPassword(dto.password()); // Nota: andrebbe codificata con BCrypt
         user.setFirstName(dto.firstName());
         user.setLastName(dto.lastName());
         user.setPhone(dto.phone());
