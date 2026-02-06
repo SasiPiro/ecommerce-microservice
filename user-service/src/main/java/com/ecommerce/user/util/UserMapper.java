@@ -1,4 +1,4 @@
-package com.ecommerce.user.utils;
+package com.ecommerce.user.util;
 
 import com.ecommerce.user.dto.UserPutRequestDTO;
 import com.ecommerce.user.dto.UserPutResponseDTO;
