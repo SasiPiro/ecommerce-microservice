@@ -1,7 +1,7 @@
 package com.ecommerce.user.service.impl;
 
 import com.ecommerce.user.dto.*;
-import com.ecommerce.user.utils.UserMapper;
+import com.ecommerce.user.util.UserMapper;
 import com.ecommerce.user.exception.UserAlreadyExistsException;
 import com.ecommerce.user.exception.UserNotFoundException;
 import com.ecommerce.user.model.User;
@@ -29,10 +29,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResponseDTO createUser(UserRequestDTO userRequestDTO){
         if(userRepository.existsByUsername(userRequestDTO.username())){
-            throw new UserAlreadyExistsException("Username already in use");
+            throw UserAlreadyExistsException.forUsername();
         }
         if (userRepository.existsByEmail(userRequestDTO.email())) {
-            throw new UserAlreadyExistsException("Email already associated");
+            throw UserAlreadyExistsException.forEmail();
         }
         User newUser = userMapper.generateUserFromDTO(userRequestDTO);
         userRepository.save(newUser);
@@ -53,7 +53,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO findById(Long id){
             return userRepository.findById(id)
                     .map(userMapper::generateDTOFromUser)
-                    .orElseThrow(() -> new UserNotFoundException("User with id " + id + " not found"));
+                    .orElseThrow(() -> UserNotFoundException.forId(id));
     }
 
     @Override
@@ -61,7 +61,7 @@ public class UserServiceImpl implements UserService {
         public UserResponseDTO findByUsername(String username){
         return userRepository.findByUsername(username)
                 .map(userMapper::generateDTOFromUser)
-                .orElseThrow(() -> new UserNotFoundException("User with username " + username + " not found"));
+                .orElseThrow(() -> UserNotFoundException.forUsername(username));
     }
 
     @Override
@@ -69,14 +69,14 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO findByEmail(String email){
         return userRepository.findByEmail(email)
                 .map(userMapper::generateDTOFromUser)
-                .orElseThrow(() -> new UserNotFoundException("User with email " + email + " not found"));
+                .orElseThrow(() -> UserNotFoundException.forEmail(email));
     }
 
     @Override
     public void deleteUser(Long id){
 
         if(!userRepository.existsById(id)) {
-            throw new UserNotFoundException("Cannot delete user with ID : " + id + " - ID not found");
+            throw UserNotFoundException.forId(id);
         }
         userRepository.deleteById(id);
     }
@@ -85,7 +85,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO patchUser(Long id, UserPatchRequestDTO userPatchRequestDTO) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("User Not Found"));
+                .orElseThrow(() -> UserNotFoundException.forId(id));
 
         if (StringUtils.hasText(userPatchRequestDTO.firstName())) {
             user.setFirstName(userPatchRequestDTO.firstName());
@@ -102,7 +102,7 @@ public class UserServiceImpl implements UserService {
         if (StringUtils.hasText(userPatchRequestDTO.email())) {
             if (!userPatchRequestDTO.email().equalsIgnoreCase(user.getEmail())) {
                 if (userRepository.existsByEmail(userPatchRequestDTO.email())) {
-                    throw new UserAlreadyExistsException("Email already associated");
+                    throw UserAlreadyExistsException.forEmail();
                 }
                 user.setEmail(userPatchRequestDTO.email());
             }
@@ -113,13 +113,13 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserPutResponseDTO putUser(Long id, UserPutRequestDTO userPutRequestDTO) {
         if(userRepository.existsByUsername(userPutRequestDTO.username())){
-            throw new UserAlreadyExistsException("Username already in use");
+            throw UserAlreadyExistsException.forUsername();
         }
         if (userRepository.existsByEmail(userPutRequestDTO.email())) {
-            throw new UserAlreadyExistsException("Email already associated");
+            throw UserAlreadyExistsException.forEmail();
         }
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("User Not Found"));
+                .orElseThrow(() -> UserNotFoundException.forId(id));
 
         User updatedUser = userMapper.updateUserFromPutDTO(userPutRequestDTO , user);
         userRepository.save(updatedUser);
