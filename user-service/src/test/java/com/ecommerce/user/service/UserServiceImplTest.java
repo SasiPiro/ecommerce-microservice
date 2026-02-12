@@ -25,52 +25,50 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class UserServiceImplTest {
+class UserServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
-
     @Mock
     private UserMapper userMapper;
-
     @InjectMocks
     private UserServiceImpl userService;
+
+    // --- CONSTANTS ---
+    private static final Long VALID_ID = 1L;
+    private static final Long NON_EXISTENT_ID = 99L;
+    private static final String MSG_USERNAME_TAKEN = "Username already in use";
+    private static final String MSG_EMAIL_TAKEN = "Email already associated";
+    private static final String MSG_NOT_FOUND = "User not found";
+
+    // --- FACTORIES (Maintainability) ---
+    private User createEntity() {
+        return new User(VALID_ID, "mario88", "mario@test.it", "pass", "Mario", "Rossi", "123", User.UserRole.CUSTOMER);
+    }
+    private UserRequestDTO createRequest() {
+        return new UserRequestDTO("mario88", "mario@test.it", "pass", "Mario", "Rossi", "123");
+    }
+    private UserResponseDTO createResponse() {
+        return new UserResponseDTO(VALID_ID, "mario88", "mario@test.it", "Mario", "Rossi", "123", User.UserRole.CUSTOMER, null);
+    }
+    private UserPutRequestDTO createPutRequest() {
+        return new UserPutRequestDTO("mario88", "mario@test.it", "newPass", "Mario", "Rossi", "123", true, User.UserRole.CUSTOMER);
+    }
+
+    // --- 1. CREATE (POST) ---
 
     @Test
     void createUserOk() {
         // GIVEN
-        UserRequestDTO request = new UserRequestDTO(
-                "mario88",
-                "mario@test.it",
-                "pass",
-                "Mario",
-                "Rossi",
-                "123"
-        );
-
-        User newUser = new User();
+        UserRequestDTO request = createRequest();
+        User newUser = createEntity();
+        UserResponseDTO expectedResponse = createResponse();
 
         when(userRepository.existsByUsername(request.username())).thenReturn(false);
         when(userRepository.existsByEmail(request.email())).thenReturn(false);
         when(userMapper.generateUserFromDTO(request)).thenReturn(newUser);
-
-        // save() returns the same entity (JPA-like behavior)
-        // realistic mapper entity based
-        when(userRepository.save(any(User.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        when(userMapper.generateDTOFromUser(newUser))
-                .thenReturn(new UserResponseDTO(
-                        1L,
-                        request.username(),
-                        request.email(),
-                        request.firstName(),
-                        request.lastName(),
-                        request.phone(),
-                        User.UserRole.CUSTOMER,
-                        null
-                ));
-
+        when(userRepository.save(any(User.class))).thenReturn(newUser);
+        when(userMapper.generateDTOFromUser(newUser)).thenReturn(expectedResponse);
         // WHEN
         UserResponseDTO response = userService.createUser(request);
 
@@ -90,13 +88,7 @@ public class UserServiceImplTest {
     @Test
     void createUserKo_WhenUsernameExists_ShouldThrowException() {
         // GIVEN
-        UserRequestDTO request = new UserRequestDTO(
-                "mario_rossi",
-                "mario@email.com",
-                "pass123",
-                "Mario",
-                "Rossi",
-                "123");
+        UserRequestDTO request = createRequest();
 
         // Mock: userRepository username exist
         when(userRepository.existsByUsername(request.username())).thenReturn(true);
@@ -104,7 +96,7 @@ public class UserServiceImplTest {
         // WHEN & THEN
         assertThatThrownBy(() -> userService.createUser(request))
                 .isInstanceOf(UserAlreadyExistsException.class)
-                .hasMessage("Username already in use");
+                .hasMessage(MSG_USERNAME_TAKEN);
 
         // VERIFY
         verify(userRepository).existsByUsername(request.username());
@@ -117,7 +109,7 @@ public class UserServiceImplTest {
     @Test
     void createUserKo_WhenEmailExists_ShouldThrowException() {
         // GIVEN
-        UserRequestDTO request = new UserRequestDTO("mario_rossi", "mario@email.com", "pass123", "Mario", "Rossi", "123");
+        UserRequestDTO request = createRequest();
 
         // Mock: Free Username, Email existing
         when(userRepository.existsByUsername(request.username())).thenReturn(false);
@@ -126,14 +118,12 @@ public class UserServiceImplTest {
         // WHEN & THEN
         assertThatThrownBy(() -> userService.createUser(request))
                 .isInstanceOf(UserAlreadyExistsException.class)
-                .hasMessage("Email already associated");
-
-        // VERIFY
-        verify(userRepository).existsByUsername(request.username());
-        verify(userRepository).existsByEmail(request.email());
+                .hasMessage(MSG_EMAIL_TAKEN);
 
         // Let's verify that, although the preliminary checks have partially passed,
         // the entity has not been created.
+        verify(userRepository).existsByUsername(request.username());
+        verify(userRepository).existsByEmail(request.email());
         verify(userMapper, never()).generateUserFromDTO(any());
         verify(userRepository, never()).save(any());
     }
@@ -142,9 +132,9 @@ public class UserServiceImplTest {
     public void getAllUsersOk(){
 
         //GIVEN
-        User user1 = new User(1L, "duplicato", "email1@test.it", "pass", "A", "B", "1", User.UserRole.CUSTOMER);
+        User user1 = createEntity();
         User user2 = new User(2L, "gianni", "email2@test.it", "pass", "A", "B", "1", User.UserRole.CUSTOMER);
-        UserResponseDTO responseDTO1 = new UserResponseDTO(user1.getId(),user1.getUsername(),user1.getEmail(),user1.getFirstName(), user1.getLastName(), user1.getPhone(), user1.getUserRole(),null);
+        UserResponseDTO responseDTO1 = createResponse();
         UserResponseDTO responseDTO2 = new UserResponseDTO(user2.getId(),user2.getUsername(),user2.getEmail(),user2.getFirstName(), user2.getLastName(), user2.getPhone(), user2.getUserRole(),null);
 
         when(userRepository.findAll()).thenReturn(Arrays.asList(user1,user2));
@@ -180,52 +170,33 @@ public class UserServiceImplTest {
     @Test
     void findByIdOK(){
         //GIVEN
-        User user1 = new User(
-                1L,
-                "duplicato",
-                "email1@test.it",
-                "pass",
-                "A",
-                "B",
-                "333333333",
-                 User.UserRole.CUSTOMER);
+        User user = createEntity();
 
-        UserResponseDTO responseDTO1 = new UserResponseDTO(
-                user1.getId(),
-                user1.getUsername(),
-                user1.getEmail(),
-                user1.getFirstName(),
-                user1.getLastName(),
-                user1.getPhone(),
-                user1.getUserRole(),
-                null);
-
-        when(userRepository.findById(user1.getId())).thenReturn(Optional.of(user1));
-        when(userMapper.generateDTOFromUser(user1)).thenReturn(responseDTO1);
+        when(userRepository.findById(VALID_ID)).thenReturn(Optional.of(user));
+        when(userMapper.generateDTOFromUser(user)).thenReturn(createResponse());
 
         //WHEN
-        UserResponseDTO userFound = userService.findById(user1.getId());
+        UserResponseDTO response = userService.findById(VALID_ID);
 
         //THEN
-        assertThat(userFound)
-                .extracting(UserResponseDTO::id, UserResponseDTO::firstName)
-                .containsExactly(user1.getId(), user1.getFirstName());
-
-        verify(userRepository).findById(user1.getId());
-        verify(userMapper).generateDTOFromUser(user1);
+        assertThat(response.id()).isEqualTo(user.getId());
+        assertThat(response.username()).isEqualTo(user.getUsername());
+        assertThat(response.email()).isEqualTo(user.getEmail());
+        verify(userRepository).findById(user.getId());
+        verify(userMapper).generateDTOFromUser(user);
     }
 
     @Test
     void findByIdKo_UserNotFound_ShouldThrowException(){
         //GIVEN
-        //Empty Optional for userId = 100L
-        Long userId = 100L;
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        when(userRepository.findById(NON_EXISTENT_ID)).thenReturn(Optional.empty());
 
         // WHEN
-        assertThatThrownBy(() -> userService.findById(userId))
+        assertThatThrownBy(() -> userService.findById(NON_EXISTENT_ID))
                 .isInstanceOf(UserNotFoundException.class) // Check the exception type
-                .hasMessage("User with id " + userId + " not found"); // Check if the message is correct
+                .hasMessageContaining(MSG_NOT_FOUND)
+                .hasMessageContaining(String.valueOf(NON_EXISTENT_ID));// Check if the message is correct
 
         // Verify Mapper never used
         verifyNoInteractions(userMapper);
@@ -234,39 +205,22 @@ public class UserServiceImplTest {
     @Test
     void findByUsernameOK(){
         //GIVEN
-        User user1 = new User(
-                1L,
-                "duplicato",
-                "email1@test.it",
-                "pass",
-                "A",
-                "B",
-                "333333333",
-                User.UserRole.CUSTOMER);
+        User user = createEntity();
+        UserResponseDTO response = createResponse();
 
-        UserResponseDTO responseDTO1 = new UserResponseDTO(
-                user1.getId(),
-                user1.getUsername(),
-                user1.getEmail(),
-                user1.getFirstName(),
-                user1.getLastName(),
-                user1.getPhone(),
-                user1.getUserRole(),
-                null);
-
-        when(userRepository.findByUsername(user1.getUsername())).thenReturn(Optional.of(user1));
-        when(userMapper.generateDTOFromUser(user1)).thenReturn(responseDTO1);
+        when(userRepository.findByUsername(user.getUsername())).thenReturn(Optional.of(user));
+        when(userMapper.generateDTOFromUser(user)).thenReturn(response);
 
         //WHEN
-        UserResponseDTO userFound = userService.findByUsername(user1.getUsername());
+        UserResponseDTO userFound = userService.findByUsername(user.getUsername());
 
         //THEN
         assertThat(userFound)
                 .extracting(UserResponseDTO::username, UserResponseDTO::email)
-                .containsExactly(user1.getUsername(), user1.getEmail());
+                .containsExactly(user.getUsername(), user.getEmail());
 
-        verify(userRepository).findByUsername(user1.getUsername());
-        verify(userMapper).generateDTOFromUser(user1);
+        verify(userRepository).findByUsername(user.getUsername());
+        verify(userMapper).generateDTOFromUser(user);
     }
 
     @Test
@@ -279,7 +233,8 @@ public class UserServiceImplTest {
         // WHEN
         assertThatThrownBy(() -> userService.findByUsername(username))
                 .isInstanceOf(UserNotFoundException.class) // Verifica il tipo di eccezione
-                .hasMessage("User with username " + username + " not found"); // Verifica il messaggio esatto
+                .hasMessageContaining(MSG_NOT_FOUND)
+                .hasMessageContaining(username); // Verifica il messaggio esatto
 
         // Verify Mapper never used
         verifyNoInteractions(userMapper);
@@ -288,39 +243,21 @@ public class UserServiceImplTest {
     @Test
     void findByEmailOK(){
         //GIVEN
-        User user1 = new User(
-                1L,
-                "Pablo",
-                "email1@test.it",
-                "pass",
-                "A",
-                "B",
-                "333333333",
-                User.UserRole.CUSTOMER);
+        User user = createEntity();
 
-        UserResponseDTO responseDTO1 = new UserResponseDTO(
-                user1.getId(),
-                user1.getUsername(),
-                user1.getEmail(),
-                user1.getFirstName(),
-                user1.getLastName(),
-                user1.getPhone(),
-                user1.getUserRole(),
-                null);
-
-        when(userRepository.findByEmail(user1.getEmail())).thenReturn(Optional.of(user1));
-        when(userMapper.generateDTOFromUser(user1)).thenReturn(responseDTO1);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userMapper.generateDTOFromUser(user)).thenReturn(createResponse());
 
         //WHEN
-        UserResponseDTO userFound = userService.findByEmail(user1.getEmail());
+        UserResponseDTO userFound = userService.findByEmail(user.getEmail());
 
         //THEN
         assertThat(userFound)
                 .extracting(UserResponseDTO::username, UserResponseDTO::email)
-                .containsExactly(user1.getUsername(), user1.getEmail());
+                .containsExactly(user.getUsername(), user.getEmail());
 
-        verify(userRepository).findByEmail(user1.getEmail());
-        verify(userMapper).generateDTOFromUser(user1);
+        verify(userRepository).findByEmail(user.getEmail());
+        verify(userMapper).generateDTOFromUser(user);
     }
 
     @Test
@@ -331,7 +268,8 @@ public class UserServiceImplTest {
         // WHEN
         assertThatThrownBy(() -> userService.findByEmail(email))
                 .isInstanceOf(UserNotFoundException.class)
-                .hasMessage("User with email " + email + " not found");
+                .hasMessageContaining(MSG_NOT_FOUND)
+                .hasMessageContaining(email);
 
         // VERIFY
         verifyNoInteractions(userMapper);
@@ -339,91 +277,76 @@ public class UserServiceImplTest {
 
     @Test
     void deleteUserOk(){
-        Long userId = 1L;
 
-        when(userRepository.existsById(userId)).thenReturn(true);
+        when(userRepository.existsById(VALID_ID)).thenReturn(true);
 
-        userService.deleteUser(userId);
+        userService.deleteUser(VALID_ID);
 
-        verify(userRepository).existsById(userId);
-        verify(userRepository).deleteById(userId);
+        verify(userRepository).existsById(VALID_ID);
+        verify(userRepository).deleteById(VALID_ID);
     }
 
     @Test
     void deleteUserKo_NoUserExist_ShouldThrowException() {
         // GIVEN
-        Long userId = 1L;
-        when(userRepository.existsById(userId)).thenReturn(false);
+        when(userRepository.existsById(NON_EXISTENT_ID)).thenReturn(false);
 
         // WHEN
-        assertThatThrownBy(() -> userService.deleteUser(userId))
+        assertThatThrownBy(() -> userService.deleteUser(NON_EXISTENT_ID))
                 .isInstanceOf(UserNotFoundException.class)
-                .hasMessageContaining("Cannot delete user with ID : " + userId);
+                .hasMessageContaining(MSG_NOT_FOUND)
+                .hasMessageContaining(String.valueOf(NON_EXISTENT_ID));
 
         // THEN E VERIFY
         // Verifichiamo che existsById sia stato chiamato
-        verify(userRepository).existsById(userId);
+        verify(userRepository).existsById(NON_EXISTENT_ID);
         // E che deleteById NON sia mai stato chiamato
         verify(userRepository, never()).deleteById(anyLong());
     }
 
         @Test
         void patchUserOk_PartialUpdate() {
-            User existingUser = new User(
-                    1L,
-                    "duplicato",
-                    "email1@test.it",
-                    "pass",
-                    "A",
-                    "B",
-                    "1",
-                    User.UserRole.CUSTOMER
+            User existingUser = createEntity();
+            String newFirstName = "Luigi";
+            String newEmail = "newemail@test.it";
+            String newPhone = "333123";
+
+            UserPatchRequestDTO request = new UserPatchRequestDTO(newFirstName, null, newEmail, newPhone);
+            UserResponseDTO expectedResponse = new UserResponseDTO(
+                    existingUser.getId(),
+                    existingUser.getUsername(), // Invariato
+                    newEmail,                   // Aggiornato
+                    newFirstName,               // Aggiornato
+                    existingUser.getLastName(), // Invariato
+                    newPhone,                   // Aggiornato
+                    existingUser.getUserRole(),
+                    null
             );
 
-            UserPatchRequestDTO request =
-                    new UserPatchRequestDTO("Luigi", null, "newemail@test.it", "333123");
-
-            when(userRepository.findById(existingUser.getId()))
-                    .thenReturn(Optional.of(existingUser));
-
-            when(userRepository.save(any(User.class)))
-                    .thenAnswer(i -> i.getArgument(0));
-
-            // realistic mapper entity based
-            when(userMapper.generateDTOFromUser(any(User.class)))
-                    .thenAnswer(i -> {
-                        User u = i.getArgument(0);
-                        return new UserResponseDTO(
-                                u.getId(),
-                                u.getUsername(),
-                                u.getEmail(),
-                                u.getFirstName(),
-                                u.getLastName(),
-                                u.getPhone(),
-                                u.getUserRole(),
-                                null
-                        );
-                    });
+            when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
+            when(userRepository.existsByEmail(newEmail)).thenReturn(false);
+            when(userRepository.save(any(User.class))).thenReturn(existingUser);
+            when(userMapper.generateDTOFromUser(existingUser)).thenReturn(expectedResponse);
 
             // 2. ACT
             UserResponseDTO result = userService.patchUser(existingUser.getId(), request);
 
             // 3. ASSERT — ENTITY
-            assertThat(existingUser.getFirstName()).isEqualTo(request.firstName());
-            assertThat(existingUser.getPhone()).isEqualTo(request.phone());
-            assertThat(existingUser.getEmail()).isEqualTo(request.email());
+            assertThat(existingUser.getFirstName()).isEqualTo(newFirstName);
+            assertThat(existingUser.getPhone()).isEqualTo(newPhone);
+            assertThat(existingUser.getEmail()).isEqualTo(newEmail);
+            assertThat(existingUser.getLastName()).isEqualTo("Rossi");
 
             // 4. ASSERT — DTO
             assertThat(result).isNotNull();
-            assertThat(result.id()).isEqualTo(existingUser.getId());
-            assertThat(result.firstName()).isEqualTo(request.firstName());
-            assertThat(result.lastName()).isEqualTo(existingUser.getLastName()); //NOT overwritten
-            assertThat(result.phone()).isEqualTo(request.phone());
-            assertThat(result.email()).isEqualTo(request.email());
+            assertThat(result.firstName()).isEqualTo(newFirstName);
+            assertThat(result.lastName()).isEqualTo("Rossi"); //NOT overwritten
+            assertThat(result.phone()).isEqualTo(newPhone);
+            assertThat(result.email()).isEqualTo(newEmail);
 
             // 5. VERIFY
             verify(userRepository).findById(existingUser.getId());
-            verify(userRepository).existsByEmail(request.email());
+            verify(userRepository).existsByEmail(newEmail);
             verify(userRepository).save(any(User.class));
             verify(userMapper).generateDTOFromUser(existingUser);
         }
@@ -431,41 +354,14 @@ public class UserServiceImplTest {
     @Test
     void patchUserOk_EmailSameAsCurrent() {
 
-        User existingUser = new User(
-                1L,
-                "Mario",
-                "email@test.it",
-                "pass",
-                "Rossi",
-                "J",
-                "123",
-                User.UserRole.CUSTOMER
-        );
+        User existingUser = createEntity();
 
         UserPatchRequestDTO request =
-                new UserPatchRequestDTO(null, null, "email@test.it", null);
+                new UserPatchRequestDTO(null, null, "mario@test.it", null);
 
-        when(userRepository.findById(existingUser.getId()))
-                .thenReturn(Optional.of(existingUser));
-
-        when(userRepository.save(any(User.class)))
-                .thenAnswer(i -> i.getArgument(0));
-
-        // realistic mapper entity based
-        when(userMapper.generateDTOFromUser(any(User.class)))
-                .thenAnswer(i -> {
-                    User u = i.getArgument(0);
-                    return new UserResponseDTO(
-                            u.getId(),
-                            u.getUsername(),
-                            u.getEmail(),
-                            u.getFirstName(),
-                            u.getLastName(),
-                            u.getPhone(),
-                            u.getUserRole(),
-                            null
-                    );
-                });
+        when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenReturn(existingUser);
+        when(userMapper.generateDTOFromUser(any(User.class))).thenReturn(createResponse());
 
         // ACT
         UserResponseDTO result = userService.patchUser(existingUser.getId(), request);
@@ -485,16 +381,7 @@ public class UserServiceImplTest {
     @Test
     void patchUserKo_EmailAlreadyAssociated_ShouldThrowException() {
 
-        User existingUser = new User(
-                1L,
-                "Mario",
-                "old@email.it",
-                "pass",
-                "Rossi",
-                "Verdi",
-                "123",
-                User.UserRole.CUSTOMER
-        );
+        User existingUser = createEntity();
 
         UserPatchRequestDTO request =
                 new UserPatchRequestDTO(null, null, "new@email.it", null);
@@ -520,41 +407,14 @@ public class UserServiceImplTest {
     @Test
     void patchUserOk_allFieldsNull_noChangesApplied() {
 
-        User existingUser = new User(
-                1L,
-                "Marioxxx",
-                "email@test.it",
-                "pass",
-                "Mario",
-                "Rossi",
-                "123",
-                User.UserRole.CUSTOMER
-        );
+        User existingUser = createEntity();
 
         UserPatchRequestDTO request =
                 new UserPatchRequestDTO(null, null, null, null);
 
-        when(userRepository.findById(existingUser.getId()))
-                .thenReturn(Optional.of(existingUser));
-
-        when(userRepository.save(any(User.class)))
-                .thenAnswer(i -> i.getArgument(0));
-
-        // realistic mapper entity based
-        when(userMapper.generateDTOFromUser(any(User.class)))
-                .thenAnswer(i -> {
-                    User u = i.getArgument(0);
-                    return new UserResponseDTO(
-                            u.getId(),
-                            u.getUsername(),
-                            u.getEmail(),
-                            u.getFirstName(),
-                            u.getLastName(),
-                            u.getPhone(),
-                            u.getUserRole(),
-                            null
-                    );
-                });
+        when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenReturn(existingUser);
+        when(userMapper.generateDTOFromUser(any(User.class))).thenReturn(createResponse());
 
         // ACT
         UserResponseDTO result = userService.patchUser(existingUser.getId(), request);
@@ -562,14 +422,8 @@ public class UserServiceImplTest {
         // ASSERT — ENTITY
         assertThat(existingUser.getFirstName()).isEqualTo("Mario");
         assertThat(existingUser.getLastName()).isEqualTo("Rossi");
-        assertThat(existingUser.getEmail()).isEqualTo("email@test.it");
+        assertThat(existingUser.getEmail()).isEqualTo("mario@test.it");
         assertThat(existingUser.getPhone()).isEqualTo("123");
-
-        // ASSERT — DTO
-        assertThat(result.firstName()).isEqualTo(existingUser.getFirstName());
-        assertThat(result.lastName()).isEqualTo(existingUser.getLastName());
-        assertThat(result.email()).isEqualTo(existingUser.getEmail());
-        assertThat(result.phone()).isEqualTo(existingUser.getPhone());
 
         // VERIFY
         verify(userRepository).save(any(User.class));
@@ -579,19 +433,18 @@ public class UserServiceImplTest {
     @Test
     void patchUserKo_UserNotFound_ShouldThrowException() {
 
-        Long userId = 99L;
-
         UserPatchRequestDTO request =
                 new UserPatchRequestDTO("Luigi", null, null, "333");
 
-        when(userRepository.findById(userId))
+        when(userRepository.findById(NON_EXISTENT_ID))
                 .thenReturn(Optional.empty());
 
         // ACT + ASSERT
         assertThatThrownBy(() ->
-                userService.patchUser(userId, request))
+                userService.patchUser(NON_EXISTENT_ID, request))
                 .isInstanceOf(UserNotFoundException.class)
-                .hasMessage("User Not Found");
+                .hasMessageContaining(MSG_NOT_FOUND)
+                .hasMessageContaining(String.valueOf(NON_EXISTENT_ID));
 
         // VERIFY
         verify(userRepository, never()).save(any());
@@ -601,96 +454,58 @@ public class UserServiceImplTest {
     @Test
     void putUserOk() {
         // GIVEN
-        Long userId = 1L;
+        User existingUser = createEntity();
+        UserPutRequestDTO request = createPutRequest();
 
-        UserPutRequestDTO requestDTO = new UserPutRequestDTO(
-                "john_doe",
-                "john.doe@email.com",
-                "secretPassword",
-                "John",
-                "Doe",
-                "123456789",
-                true,
-                User.UserRole.CUSTOMER
+        UserPutResponseDTO expectedResponse = new UserPutResponseDTO(
+                existingUser.getId(),
+                request.username(),
+                request.email(),
+                request.firstName(),
+                request.lastName(),
+                request.phone(),
+                request.active(),
+                request.userRole(),
+                null,
+                null
         );
 
-        User existingUser = new User();
-        existingUser.setId(userId);
-
-        User updatedUser = new User();
-        updatedUser.setId(userId);
-        updatedUser.setUsername(requestDTO.username());
-        updatedUser.setEmail(requestDTO.email());
-        updatedUser.setFirstName(requestDTO.firstName());
-        updatedUser.setLastName(requestDTO.lastName());
-        updatedUser.setPhone(requestDTO.phone());
-        updatedUser.setActive(requestDTO.active());
-        updatedUser.setUserRole(requestDTO.userRole());
-
         // MOCK repository checks
-        when(userRepository.existsByUsername(requestDTO.username())).thenReturn(false);
-        when(userRepository.existsByEmail(requestDTO.email())).thenReturn(false);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
-
+        when(userRepository.existsByUsername(request.username())).thenReturn(false);
+        when(userRepository.existsByEmail(request.email())).thenReturn(false);
+        when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
         // MOCK mapper update
-        when(userMapper.updateUserFromPutDTO(requestDTO, existingUser))
-                .thenReturn(updatedUser);
-
-        when(userRepository.save(updatedUser)).thenReturn(updatedUser);
-
-        // realistic mapper entity based
-        when(userMapper.generatePutResponseFromUser(any(User.class)))
-                .thenAnswer(invocation -> {
-                    User u = invocation.getArgument(0);
-                    return new UserPutResponseDTO(
-                            u.getId(),
-                            u.getUsername(),
-                            u.getEmail(),
-                            u.getFirstName(),
-                            u.getLastName(),
-                            u.getPhone(),
-                            u.isActive(),
-                            u.getUserRole(),
-                            null,
-                            null
-                    );
-                });
+        when(userMapper.updateUserFromPutDTO(request, existingUser)).thenReturn(existingUser);
+        when(userRepository.save(existingUser)).thenReturn(existingUser);
+        when(userMapper.generatePutResponseFromUser(any(User.class))).thenReturn(expectedResponse);
 
         // WHEN
-        UserPutResponseDTO response = userService.putUser(userId, requestDTO);
+        UserPutResponseDTO response = userService.putUser(existingUser.getId(), request);
 
         // THEN
         assertThat(response).isNotNull();
-        assertThat(response.id()).isEqualTo(userId);
-        assertThat(response.username()).isEqualTo(requestDTO.username());
-        assertThat(response.email()).isEqualTo(requestDTO.email());
-        assertThat(response.firstName()).isEqualTo(requestDTO.firstName());
-        assertThat(response.lastName()).isEqualTo(requestDTO.lastName());
-        assertThat(response.phone()).isEqualTo(requestDTO.phone());
-        assertThat(response.active()).isEqualTo(requestDTO.active());
-        assertThat(response.userRole()).isEqualTo(requestDTO.userRole());
+        assertThat(response.id()).isEqualTo(existingUser.getId());
+        assertThat(response.username()).isEqualTo(request.username());
+        assertThat(response.email()).isEqualTo(request.email());
+        assertThat(response.firstName()).isEqualTo(request.firstName());
+        assertThat(response.lastName()).isEqualTo(request.lastName());
+        assertThat(response.phone()).isEqualTo(request.phone());
 
-        verify(userRepository).save(updatedUser);
+        // VERIFY
+        verify(userRepository).save(existingUser);
+        verify(userMapper).generatePutResponseFromUser(existingUser);
     }
 
     @Test
     void putUser_UsernameExists_ShouldThrowException() {
         // Arrange
-        Long userId = 1L;
-        UserPutRequestDTO requestDTO = new UserPutRequestDTO("john_doe",
-                "john.doe@email.com",
-                "secretPassword",
-                "John",
-                "Doe",
-                "123456789",
-                true,
-                User.UserRole.CUSTOMER);
+        UserPutRequestDTO requestDTO = createPutRequest();
         when(userRepository.existsByUsername(requestDTO.username())).thenReturn(true);
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.putUser(userId, requestDTO))
+        assertThatThrownBy(() -> userService.putUser(VALID_ID, requestDTO))
                 .isInstanceOf(UserAlreadyExistsException.class)
-                .hasMessage("Username already in use");
+                .hasMessage(MSG_USERNAME_TAKEN);
 
         verify(userRepository, never()).save(any());
         verify(userRepository).existsByUsername(requestDTO.username());
@@ -701,22 +516,15 @@ public class UserServiceImplTest {
     @Test
     void putUser_EmailExists_ShouldThrowException() {
         // GIVEN
-        Long userId = 1L;
-        UserPutRequestDTO requestDTO = new UserPutRequestDTO("john_doe",
-                "john.doe@email.com",
-                "secretPassword",
-                "John",
-                "Doe",
-                "123456789",
-                true,
-                User.UserRole.CUSTOMER);
+        UserPutRequestDTO requestDTO = createPutRequest();
+
         when(userRepository.existsByUsername(requestDTO.username())).thenReturn(false);
         when(userRepository.existsByEmail(requestDTO.email())).thenReturn(true);
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.putUser(userId, requestDTO))
+        assertThatThrownBy(() -> userService.putUser(VALID_ID, requestDTO))
                 .isInstanceOf(UserAlreadyExistsException.class)
-                .hasMessage("Email already associated");
+                .hasMessage(MSG_EMAIL_TAKEN);
 
         verify(userRepository, never()).save(any());
     }
@@ -724,23 +532,16 @@ public class UserServiceImplTest {
     @Test
     void putUser_UserNotFound_ShouldThrowException() {
         // GIVEN
-        Long userId = 99L;
-        UserPutRequestDTO requestDTO = new UserPutRequestDTO("john_doe",
-                "john.doe@email.com",
-                "secretPassword",
-                "John",
-                "Doe",
-                "123456789",
-                true,
-                User.UserRole.CUSTOMER);
+        UserPutRequestDTO requestDTO = createPutRequest();
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userRepository.findById(NON_EXISTENT_ID)).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.putUser(userId, requestDTO))
+        assertThatThrownBy(() -> userService.putUser(NON_EXISTENT_ID, requestDTO))
                 .isInstanceOf(UserNotFoundException.class)
-                .hasMessage("User Not Found");
+                .hasMessageContaining(MSG_NOT_FOUND)
+                .hasMessageContaining(String.valueOf(NON_EXISTENT_ID));
 
         // Verify
         verify(userRepository, never()).save(any());

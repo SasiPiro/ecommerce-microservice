@@ -53,7 +53,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO findById(Long id){
             return userRepository.findById(id)
                     .map(userMapper::generateDTOFromUser)
-                    .orElseThrow(() -> UserNotFoundException.forId(id));
+                    .orElseThrow(UserNotFoundException::forId);
     }
 
     @Override
@@ -76,7 +76,7 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(Long id){
 
         if(!userRepository.existsById(id)) {
-            throw UserNotFoundException.forId(id);
+            throw UserNotFoundException.forId();
         }
         userRepository.deleteById(id);
     }
@@ -85,7 +85,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO patchUser(Long id, UserPatchRequestDTO userPatchRequestDTO) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> UserNotFoundException.forId(id));
+                .orElseThrow(UserNotFoundException::forId);
 
         if (StringUtils.hasText(userPatchRequestDTO.firstName())) {
             user.setFirstName(userPatchRequestDTO.firstName());
@@ -119,7 +119,7 @@ public class UserServiceImpl implements UserService {
             throw UserAlreadyExistsException.forEmail();
         }
         User user = userRepository.findById(id)
-                .orElseThrow(() -> UserNotFoundException.forId(id));
+                .orElseThrow(UserNotFoundException::forId);
 
         User updatedUser = userMapper.updateUserFromPutDTO(userPutRequestDTO , user);
         userRepository.save(updatedUser);
