@@ -59,7 +59,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}")
-    public UserResponseDTO updatePartial(@PathVariable Long id, @RequestBody UserPatchRequestDTO dto) {
+    public UserResponseDTO updatePartial(@PathVariable Long id, @Valid @RequestBody UserPatchRequestDTO dto) {
         log.info("Patch parziale utente ID: {}", id);
         return userService.patchUser(id, dto);
     }
