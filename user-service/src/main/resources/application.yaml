@@ -11,11 +11,17 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create # in prod set to update with db update scripts
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  data:
+    web:
+      pageable:
+        default-page-size: 10
+        max-page-size: 50
 
 server:
   port: 8081
@@ -25,3 +31,8 @@ management:
     web:
       exposure:
         include: "*"
+
+logging:
+  level:
+    root: INFO
+    com.ecommerce.user: DEBUG # Abilita i log DEBUG per il nostro codice applicativo
