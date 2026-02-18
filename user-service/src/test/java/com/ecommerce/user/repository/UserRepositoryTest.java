@@ -1,20 +1,26 @@
 package com.ecommerce.user.repository;
 
 import com.ecommerce.user.model.User;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 
 @DataJpaTest
+@ActiveProfiles("test")
 @ContextConfiguration(classes = RepositoryConfig.class)
 class UserRepositoryTest {
 
@@ -24,15 +30,21 @@ class UserRepositoryTest {
     @Autowired
     private TestEntityManager entityManager;
 
+    // --- FACTORY ---
+    private User createEntity() {
+        return new User(null, "mario88", "mario@test.it", "pass", "Mario", "Rossi", "123", User.UserRole.CUSTOMER);
+    }
+
     // --- TEST CREATE ---
 
     @Test
-    public void testCreateOk(){
-        User user = new User(null , "nick", "mail@mail.com", "password", "mario", "rossi", "3331234567", User.UserRole.CUSTOMER);
+    @DisplayName("Should persist user with generated ID and audit fields")
+    void shouldPersistUser_withGeneratedIdAndAuditFields() {
+        User user = createEntity();
 
         User savedUser = userRepository.save(user);
         assertThat(savedUser.getId()).isNotNull();
-        assertThat(savedUser.getUsername()).isEqualTo("nick");
+        assertThat(savedUser.getUsername()).isEqualTo("mario88");
         assertThat(savedUser.isActive()).isTrue(); // Default del costruttore
         assertThat(savedUser.getCreatedAt()).isNotNull(); // Gestito da @PrePersist
         assertThat(savedUser.getUpdatedAt()).isNotNull(); // Gestito da costruttore
@@ -40,13 +52,13 @@ class UserRepositoryTest {
     }
 
     @Test
-    public void testCreateKo_DuplicateUsername() {
-        // GIVEN: Un utente già esistente
-        User user1 = new User(null, "duplicato", "email1@test.it", "pass", "A", "B", "1", User.UserRole.CUSTOMER);
-        entityManager.persistAndFlush(user1);
+    @DisplayName("Should throw DataIntegrityViolationException when username is duplicate")
+    void shouldThrowException_whenUsernameIsDuplicate() {
+        // GIVEN: existing user
+        entityManager.persistAndFlush(createEntity());
 
-        // Un secondo utente con lo stesso username
-        User user2 = new User(null, "duplicato", "email2@test.it", "pass", "C", "D", "2", User.UserRole.CUSTOMER);
+        // same username of the first user
+        User user2 = new User(null, "mario88", "email2@test.it", "pass", "C", "D", "2", User.UserRole.CUSTOMER);
 
         // WHEN AND THEN
         assertThatThrownBy(() -> userRepository.save(user2))
@@ -56,9 +68,10 @@ class UserRepositoryTest {
     // --- RICERCA PER ID ---
 
     @Test
-    public void testFindByIdOk() {
+    @DisplayName("Should return user when searching by existing ID")
+    void shouldReturnUser_whenIdExists() {
         // GIVEN
-        User user = new User(null, "user1", "user1@email.com", "pass", "N", "C", "1", User.UserRole.ADMIN);
+        User user = createEntity();
         entityManager.persistAndFlush(user);
 
         // WHEN
@@ -66,12 +79,13 @@ class UserRepositoryTest {
 
         // THEN
         assertThat(opt).isPresent();
-        assertThat(opt.get().getUsername()).isEqualTo("user1");
-        assertThat(opt.get().getUserRole()).isEqualTo(User.UserRole.ADMIN);
+        assertThat(opt.get().getUsername()).isEqualTo("mario88");
+        assertThat(opt.get().getUserRole()).isEqualTo(User.UserRole.CUSTOMER);
     }
 
     @Test
-    public void testFindByIdKo() {
+    @DisplayName("Should return empty Optional when ID does not exist")
+    void shouldReturnEmpty_whenIdDoesNotExist() {
         // GIVEN
         Long idInesistente = 999L;
 
@@ -85,23 +99,25 @@ class UserRepositoryTest {
     // --- RICERCA PER USERNAME ---
 
     @Test
-    public void testFindByUsernameOk() {
+    @DisplayName("Should return user when searching by existing username")
+    void shouldReturnUser_whenUsernameExists() {
         // GIVEN
-        User user = new User(null, "test_user", "test@email.com", "pass", "N", "C", "1", User.UserRole.SELLER);
+        User user = createEntity();
         entityManager.persistAndFlush(user);
 
         // WHEN
-        Optional<User> opt = userRepository.findByUsername("test_user");
+        Optional<User> opt = userRepository.findByUsername("mario88");
 
         // THEN
         assertThat(opt).isPresent();
-        assertThat(opt.get().getEmail()).isEqualTo("test@email.com");
+        assertThat(opt.get().getEmail()).isEqualTo("mario@test.it");
     }
 
     @Test
-    public void testFindByUsernameKo() {
+    @DisplayName("Should return empty Optional when username does not exist")
+    void shouldReturnEmpty_whenUsernameDoesNotExist() {
         // WHEN
-        Optional<User> opt = userRepository.findByUsername("non_esisto");
+        Optional<User> opt = userRepository.findByUsername("not_existing");
 
         // THEN
         assertThat(opt).isNotPresent();
@@ -110,21 +126,23 @@ class UserRepositoryTest {
     // --- RICERCA PER EMAIL ---
 
     @Test
-    public void testFindByEmailOk() {
+    @DisplayName("Should return user when searching by existing email")
+    void shouldReturnUser_whenEmailExists() {
         // GIVEN
-        User user = new User(null, "email_user", "find@email.com", "pass", "N", "C", "1", User.UserRole.CUSTOMER);
+        User user = createEntity();
         entityManager.persistAndFlush(user);
 
         // WHEN
-        Optional<User> opt = userRepository.findByEmail("find@email.com");
+        Optional<User> opt = userRepository.findByEmail("mario@test.it");
 
         // THEN
         assertThat(opt).isPresent();
-        assertThat(opt.get().getUsername()).isEqualTo("email_user");
+        assertThat(opt.get().getUsername()).isEqualTo("mario88");
     }
 
     @Test
-    public void testFindByEmailKo() {
+    @DisplayName("Should return empty Optional when email does not exist")
+    void shouldReturnEmpty_whenEmailDoesNotExist() {
         // WHEN
         Optional<User> opt = userRepository.findByEmail("null@email.com");
 
@@ -135,19 +153,22 @@ class UserRepositoryTest {
     // --- EXISTS BY USERNAME ---
 
     @Test
-    public void testExistsByUsernameOk() {
+    @DisplayName("Should return true when username exists in database")
+    void shouldReturnTrue_whenUsernameExists() {
         // GIVEN
-        entityManager.persistAndFlush(new User(null, "boss", "boss@email.com", "p", "A", "B", "1", User.UserRole.ADMIN));
+        User user = createEntity();
+        entityManager.persistAndFlush(user);
 
         // WHEN
-        boolean exists = userRepository.existsByUsername("boss");
+        boolean exists = userRepository.existsByUsername("mario88");
 
         // THEN
         assertThat(exists).isTrue();
     }
 
     @Test
-    public void testExistsByUsernameKo() {
+    @DisplayName("Should return false when username does not exist in database")
+    void shouldReturnFalse_whenUsernameDoesNotExist() {
         // WHEN
         boolean exists = userRepository.existsByUsername("ghost_user");
 
@@ -158,19 +179,22 @@ class UserRepositoryTest {
     // --- EXISTS BY EMAIL ---
 
     @Test
-    public void testExistsByEmailOk() {
+    @DisplayName("Should return true when email exists in database")
+    void shouldReturnTrue_whenEmailExists() {
         // GIVEN
-        entityManager.persistAndFlush(new User(null, "mail_test", "exists@test.it", "p", "A", "B", "1", User.UserRole.CUSTOMER));
+        User user = createEntity();
+        entityManager.persistAndFlush(user);
 
         // WHEN
-        boolean exists = userRepository.existsByEmail("exists@test.it");
+        boolean exists = userRepository.existsByEmail("mario@test.it");
 
         // THEN
         assertThat(exists).isTrue();
     }
 
     @Test
-    public void testExistsByEmailKo() {
+    @DisplayName("Should return false when email does not exist in database")
+    void shouldReturnFalse_whenEmailDoesNotExist() {
         // WHEN
         boolean exists = userRepository.existsByEmail("not@exists.it");
 
@@ -181,40 +205,90 @@ class UserRepositoryTest {
     // --- FIND ALL ---
 
     @Test
-    public void testFindAllOk() {
+    @DisplayName("Should return paginated and sorted users")
+    void shouldReturnPaginatedAndSortedUsers() {
         // GIVEN
-        entityManager.persist(new User(null, "u1", "u1@e.it", "p", "A", "B", "1", User.UserRole.CUSTOMER));
-        entityManager.persist(new User(null, "u2", "u2@e.it", "p", "A", "B", "1" , User.UserRole.SELLER));
+        User user1 = createEntity();
+
+        User user2 = createEntity();
+        user2.setUsername("u2");
+        user2.setEmail("mail@test.it");
+
+        User user3 = createEntity();
+        user3.setUsername("u3");
+        user3.setEmail("mail3@test.it");
+
+        entityManager.persist(user1);
+        entityManager.persist(user2);
+        entityManager.persist(user3);
         entityManager.flush();
 
-        // WHEN
-        List<User> users = userRepository.findAll();
+        // Chiediamo la pagina 0 con dimensione 2, ordinata per username
+        Pageable pageable = PageRequest.of(0, 2, Sort.by("username").ascending());
+
+        // 2. WHEN
+        Page<User> result = userRepository.findAll(pageable);
 
         // THEN
-        assertThat(users).hasSize(2);
-        assertThat(users).extracting(User::getUsername).containsExactlyInAnyOrder("u1", "u2");
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        assertThat(result.getContent()).extracting(User::getUsername).containsExactlyInAnyOrder("mario88", "u2");
     }
 
     @Test
-    public void testFindAllKo() {
+    @DisplayName("Should return empty page when database is empty")
+    void shouldReturnEmptyPage_whenDatabaseIsEmpty() {
+        // GIVEN
+        Pageable pageable = PageRequest.of(0, 10);
+
         // WHEN
-        List<User> users = userRepository.findAll();
+        Page<User> result = userRepository.findAll(pageable);
 
         // THEN
-        assertThat(users).isEmpty();
+        assertThat(result).isEmpty();
+        assertThat(result.getTotalElements()).isZero();
+        assertThat(result.getTotalPages()).isZero();
+        assertThat(result.getContent()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should return empty content when requested page index is out of bounds")
+    void shouldReturnEmptyContent_whenPageIndexIsOutOfBounds() {
+        // 1. GIVEN: Salviamo 2 utenti nel DB
+        entityManager.persist(new User(null, "u1", "u1@e.it", "p", "A", "B", "1", User.UserRole.CUSTOMER));
+        entityManager.persist(createEntity());
+        entityManager.flush();
+        // Chiediamo la pagina 5 (che non esiste, dato che con size 10 avremmo solo la
+        // pagina 0)
+        Pageable pageable = PageRequest.of(5, 10);
+
+        // 2. WHEN
+        Page<User> result = userRepository.findAll(pageable);
+
+        // 3. THEN
+        assertThat(result.getContent()).isEmpty(); // Nessun dato per questa pagina
+        assertThat(result.getTotalElements()).isEqualTo(2); // Ma il totale complessivo rimane 2
+        assertThat(result.getTotalPages()).isEqualTo(1); // Le pagine totali rimangono 1
+        assertThat(result.getNumber()).isEqualTo(5); // La pagina richiesta era la 5
     }
 
     // --- UPDATE ---
 
     @Test
-    public void testUpdateOk() {
+    @DisplayName("Should update user fields and refresh updatedAt timestamp")
+    void shouldUpdateUserFields_andRefreshUpdatedAtTimestamp() {
         // GIVEN
-        User user = new User(null, "original", "original@email.com", "pass", "Mario", "Rossi", "1", User.UserRole.CUSTOMER);
+        User user = createEntity();
         user = entityManager.persistAndFlush(user);
         LocalDateTime initialUpdateAt = user.getUpdatedAt();
 
-        // Aspettiamo un millisecondo per garantire che il tempo cambi per il test del timestamp
-        try { Thread.sleep(1); } catch (InterruptedException e) {}
+        // Aspettiamo un millisecondo per garantire che il tempo cambi per il test del
+        // timestamp
+        try {
+            Thread.sleep(1);
+        } catch (InterruptedException e) {
+        }
 
         // WHEN
         user.setFirstName("Luigi");
@@ -226,13 +300,15 @@ class UserRepositoryTest {
     }
 
     @Test
-    public void testUpdateKo_DuplicateEmail() {
+    @DisplayName("Should throw DataIntegrityViolationException when updating email to an existing one")
+    void shouldThrowException_whenUpdatingEmailToDuplicate() {
         // GIVEN
-        User u1 = entityManager.persistAndFlush(new User(null, "user1", "email1@test.it", "p", "A", "B", "1", User.UserRole.CUSTOMER));
-        User u2 = entityManager.persistAndFlush(new User(null, "user2", "email2@test.it", "p", "A", "B", "1", User.UserRole.CUSTOMER));
+        entityManager.persistAndFlush(createEntity());
+        User u2 = entityManager
+                .persistAndFlush(new User(null, "user2", "email2@test.it", "p", "A", "B", "1", User.UserRole.CUSTOMER));
 
         // WHEN: Provo a cambiare l'email di u2 con quella di u1
-        u2.setEmail("email1@test.it");
+        u2.setEmail("mario@test.it");
 
         // THEN
         assertThatThrownBy(() -> userRepository.saveAndFlush(u2))
@@ -242,9 +318,10 @@ class UserRepositoryTest {
     // --- DELETE ---
 
     @Test
-    public void testDeleteOk() {
+    @DisplayName("Should delete user and confirm removal from database")
+    void shouldDeleteUser_andConfirmRemovalFromDatabase() {
         // GIVEN
-        User user = new User(null, "delete_me", "del@test.it", "p", "A", "B", "1", User.UserRole.CUSTOMER);
+        User user = createEntity();
         user = entityManager.persistAndFlush(user);
 
         // WHEN
@@ -257,7 +334,8 @@ class UserRepositoryTest {
     }
 
     @Test
-    public void testDeleteKo() {
+    @DisplayName("Should not throw exception when deleting a non-existent ID")
+    void shouldNotThrowException_whenDeletingNonExistentId() {
         // GIVEN: un ID non presente nel DB
         Long nonExistentId = 999L;
 

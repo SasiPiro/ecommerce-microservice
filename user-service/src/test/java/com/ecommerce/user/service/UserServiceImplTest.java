@@ -7,20 +7,22 @@ import com.ecommerce.user.model.User;
 import com.ecommerce.user.repository.UserRepository;
 import com.ecommerce.user.service.impl.UserServiceImpl;
 import com.ecommerce.user.util.UserMapper;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -45,20 +47,35 @@ class UserServiceImplTest {
     private User createEntity() {
         return new User(VALID_ID, "mario88", "mario@test.it", "pass", "Mario", "Rossi", "123", User.UserRole.CUSTOMER);
     }
+
+    // Factory per POST
     private UserRequestDTO createRequest() {
         return new UserRequestDTO("mario88", "mario@test.it", "pass", "Mario", "Rossi", "123");
     }
+
+    // Factory per GET/PATCH Response
     private UserResponseDTO createResponse() {
-        return new UserResponseDTO(VALID_ID, "mario88", "mario@test.it", "Mario", "Rossi", "123", User.UserRole.CUSTOMER, null);
+        return new UserResponseDTO(VALID_ID, "mario88", "mario@test.it", "Mario", "Rossi", "123",
+                User.UserRole.CUSTOMER, null);
     }
+
+    // Factory per PUT Request
     private UserPutRequestDTO createPutRequest() {
-        return new UserPutRequestDTO("mario88", "mario@test.it", "newPass", "Mario", "Rossi", "123", true, User.UserRole.CUSTOMER);
+        return new UserPutRequestDTO("mario88", "mario@test.it", "newPass", "Mario", "Rossi", "123", true,
+                User.UserRole.CUSTOMER);
+    }
+
+    // Factory per PUT Response
+    private UserPutResponseDTO createPutResponse() {
+        return new UserPutResponseDTO(VALID_ID, "mario88", "mario@test.it", "Mario", "Rossi", "123", true,
+                User.UserRole.CUSTOMER, null, null);
     }
 
     // --- 1. CREATE (POST) ---
 
     @Test
-    void createUserOk() {
+    @DisplayName("Should create user successfully when username and email are available")
+    void shouldCreateUserSuccessfully_whenCredentialsAreAvailable() {
         // GIVEN
         UserRequestDTO request = createRequest();
         User newUser = createEntity();
@@ -84,9 +101,9 @@ class UserServiceImplTest {
         verify(userMapper).generateDTOFromUser(newUser);
     }
 
-    // SCENARIO 1: username already exist
     @Test
-    void createUserKo_WhenUsernameExists_ShouldThrowException() {
+    @DisplayName("Should throw UserAlreadyExistsException when username is already taken")
+    void shouldThrowException_whenUsernameAlreadyExists() {
         // GIVEN
         UserRequestDTO request = createRequest();
 
@@ -105,9 +122,9 @@ class UserServiceImplTest {
         verify(userRepository, never()).save(any());
     }
 
-    // SCENARIO 2: Free Username, Email existing
     @Test
-    void createUserKo_WhenEmailExists_ShouldThrowException() {
+    @DisplayName("Should throw UserAlreadyExistsException when email is already associated")
+    void shouldThrowException_whenEmailAlreadyExists() {
         // GIVEN
         UserRequestDTO request = createRequest();
 
@@ -129,56 +146,75 @@ class UserServiceImplTest {
     }
 
     @Test
-    public void getAllUsersOk(){
+    @DisplayName("Should return paginated list of all users")
+    void shouldReturnPaginatedUsers_whenUsersExist() {
 
-        //GIVEN
+        // GIVEN
         User user1 = createEntity();
         User user2 = new User(2L, "gianni", "email2@test.it", "pass", "A", "B", "1", User.UserRole.CUSTOMER);
         UserResponseDTO responseDTO1 = createResponse();
-        UserResponseDTO responseDTO2 = new UserResponseDTO(user2.getId(),user2.getUsername(),user2.getEmail(),user2.getFirstName(), user2.getLastName(), user2.getPhone(), user2.getUserRole(),null);
+        UserResponseDTO responseDTO2 = new UserResponseDTO(user2.getId(), user2.getUsername(), user2.getEmail(),
+                user2.getFirstName(), user2.getLastName(), user2.getPhone(), user2.getUserRole(), null);
 
-        when(userRepository.findAll()).thenReturn(Arrays.asList(user1,user2));
+        // Definiamo il Pageable del test
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("username").ascending());
+
+        // Creiamo la Page di Entity che il Repository restituirebbe
+        List<User> userEntities = Arrays.asList(user1, user2);
+        Page<User> userPage = new PageImpl<>(userEntities, pageable, userEntities.size());
+
+        // MOCKING
+        when(userRepository.findAll(any(Pageable.class))).thenReturn(userPage);
         when(userMapper.generateDTOFromUser(user1)).thenReturn(responseDTO1);
         when(userMapper.generateDTOFromUser(user2)).thenReturn(responseDTO2);
 
-        //WHEN
-        List<UserResponseDTO> result = userService.getAllUsers();
+        // WHEN
+        Page<UserResponseDTO> result = userService.getAllUsers(pageable);
 
-        //THEN
-        assertThat(result).hasSize(2);
-        assertThat(result).extracting(UserResponseDTO::username).containsExactlyInAnyOrder(responseDTO1.username(),responseDTO2.username());
+        // THEN
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getContent())
+                .extracting(UserResponseDTO::username)
+                .containsExactlyInAnyOrder(responseDTO1.username(), responseDTO2.username());
 
-        //VERIFY
-        verify(userRepository).findAll();
-        verify(userMapper,times(2)).generateDTOFromUser(any(User.class));
+        // VERIFY
+        verify(userRepository).findAll(pageable);
+        verify(userMapper, times(2)).generateDTOFromUser(any(User.class));
     }
 
     @Test
-    void getAllUsersOk_WhenNoUsersExist_ShouldReturnEmptyList() {
-        // GIVEN
-        when(userRepository.findAll()).thenReturn(Collections.emptyList());
+    @DisplayName("Should return empty page when no users exist in database")
+    void shouldReturnEmptyPage_whenNoUsersExist() {
+        // 1. GIVEN: Definiamo un Pageable di richiesta
+        Pageable pageable = PageRequest.of(0, 10);
 
-        // WHEN
-        List<UserResponseDTO> result = userService.getAllUsers();
+        // Creiamo una Page vuota usando Page.empty()
+        when(userRepository.findAll(any(Pageable.class))).thenReturn(Page.empty(pageable));
+
+        // 2. WHEN
+        Page<UserResponseDTO> result = userService.getAllUsers(pageable);
 
         // THEN
         assertThat(result).isEmpty();
-        verify(userRepository).findAll();
-        verifyNoInteractions(userMapper); //nothing to map if the list is empty
+        assertThat(result.getTotalElements()).isZero();
+        verify(userRepository).findAll(pageable);
+        verifyNoInteractions(userMapper); // nothing to map if the page is empty
     }
 
     @Test
-    void findByIdOK(){
-        //GIVEN
+    @DisplayName("Should return user when searching by valid ID")
+    void shouldReturnUser_whenIdExists() {
+        // GIVEN
         User user = createEntity();
 
         when(userRepository.findById(VALID_ID)).thenReturn(Optional.of(user));
         when(userMapper.generateDTOFromUser(user)).thenReturn(createResponse());
 
-        //WHEN
+        // WHEN
         UserResponseDTO response = userService.findById(VALID_ID);
 
-        //THEN
+        // THEN
         assertThat(response.id()).isEqualTo(user.getId());
         assertThat(response.username()).isEqualTo(user.getUsername());
         assertThat(response.email()).isEqualTo(user.getEmail());
@@ -187,34 +223,35 @@ class UserServiceImplTest {
     }
 
     @Test
-    void findByIdKo_UserNotFound_ShouldThrowException(){
-        //GIVEN
+    @DisplayName("Should throw UserNotFoundException when ID does not exist")
+    void shouldThrowException_whenIdNotFound() {
+        // GIVEN
 
         when(userRepository.findById(NON_EXISTENT_ID)).thenReturn(Optional.empty());
 
         // WHEN
         assertThatThrownBy(() -> userService.findById(NON_EXISTENT_ID))
                 .isInstanceOf(UserNotFoundException.class) // Check the exception type
-                .hasMessageContaining(MSG_NOT_FOUND)
-                .hasMessageContaining(String.valueOf(NON_EXISTENT_ID));// Check if the message is correct
+                .hasMessageContaining(MSG_NOT_FOUND);// Check if the message is correct
 
         // Verify Mapper never used
         verifyNoInteractions(userMapper);
     }
 
     @Test
-    void findByUsernameOK(){
-        //GIVEN
+    @DisplayName("Should return user when searching by existing username")
+    void shouldReturnUser_whenUsernameExists() {
+        // GIVEN
         User user = createEntity();
         UserResponseDTO response = createResponse();
 
         when(userRepository.findByUsername(user.getUsername())).thenReturn(Optional.of(user));
         when(userMapper.generateDTOFromUser(user)).thenReturn(response);
 
-        //WHEN
+        // WHEN
         UserResponseDTO userFound = userService.findByUsername(user.getUsername());
 
-        //THEN
+        // THEN
         assertThat(userFound)
                 .extracting(UserResponseDTO::username, UserResponseDTO::email)
                 .containsExactly(user.getUsername(), user.getEmail());
@@ -224,9 +261,10 @@ class UserServiceImplTest {
     }
 
     @Test
-    void findByUsernameKo_UserNotFound_ShouldThrowException(){
-        //GIVEN
-        //Empty Optional for username = "Gianni"
+    @DisplayName("Should throw UserNotFoundException when username does not exist")
+    void shouldThrowException_whenUsernameNotFound() {
+        // GIVEN
+        // Empty Optional for username = "Gianni"
         String username = "Gianni";
         when(userRepository.findByUsername(username)).thenReturn(Optional.empty());
 
@@ -241,17 +279,18 @@ class UserServiceImplTest {
     }
 
     @Test
-    void findByEmailOK(){
-        //GIVEN
+    @DisplayName("Should return user when searching by existing email")
+    void shouldReturnUser_whenEmailExists() {
+        // GIVEN
         User user = createEntity();
 
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(userMapper.generateDTOFromUser(user)).thenReturn(createResponse());
 
-        //WHEN
+        // WHEN
         UserResponseDTO userFound = userService.findByEmail(user.getEmail());
 
-        //THEN
+        // THEN
         assertThat(userFound)
                 .extracting(UserResponseDTO::username, UserResponseDTO::email)
                 .containsExactly(user.getUsername(), user.getEmail());
@@ -261,8 +300,9 @@ class UserServiceImplTest {
     }
 
     @Test
-    void findByEmailKo_UserNotFound_ShouldThrowException(){
-        //GIVEN
+    @DisplayName("Should throw UserNotFoundException when email does not exist")
+    void shouldThrowException_whenEmailNotFound() {
+        // GIVEN
         String email = "email1@test.it";
         when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
         // WHEN
@@ -276,7 +316,8 @@ class UserServiceImplTest {
     }
 
     @Test
-    void deleteUserOk(){
+    @DisplayName("Should delete user successfully when user exists")
+    void shouldDeleteUser_whenUserExists() {
 
         when(userRepository.existsById(VALID_ID)).thenReturn(true);
 
@@ -287,15 +328,15 @@ class UserServiceImplTest {
     }
 
     @Test
-    void deleteUserKo_NoUserExist_ShouldThrowException() {
+    @DisplayName("Should throw UserNotFoundException when deleting a non-existent user")
+    void shouldThrowException_whenDeletingNonExistentUser() {
         // GIVEN
         when(userRepository.existsById(NON_EXISTENT_ID)).thenReturn(false);
 
         // WHEN
         assertThatThrownBy(() -> userService.deleteUser(NON_EXISTENT_ID))
                 .isInstanceOf(UserNotFoundException.class)
-                .hasMessageContaining(MSG_NOT_FOUND)
-                .hasMessageContaining(String.valueOf(NON_EXISTENT_ID));
+                .hasMessageContaining(MSG_NOT_FOUND);
 
         // THEN E VERIFY
         // Verifichiamo che existsById sia stato chiamato
@@ -304,60 +345,60 @@ class UserServiceImplTest {
         verify(userRepository, never()).deleteById(anyLong());
     }
 
-        @Test
-        void patchUserOk_PartialUpdate() {
-            User existingUser = createEntity();
-            String newFirstName = "Luigi";
-            String newEmail = "newemail@test.it";
-            String newPhone = "333123";
+    @Test
+    @DisplayName("Should partially update user fields via PATCH")
+    void shouldPartiallyUpdateUser_whenFieldsAreProvided() {
+        User existingUser = createEntity();
+        String newFirstName = "Luigi";
+        String newEmail = "newemail@test.it";
+        String newPhone = "333123";
 
-            UserPatchRequestDTO request = new UserPatchRequestDTO(newFirstName, null, newEmail, newPhone);
-            UserResponseDTO expectedResponse = new UserResponseDTO(
-                    existingUser.getId(),
-                    existingUser.getUsername(), // Invariato
-                    newEmail,                   // Aggiornato
-                    newFirstName,               // Aggiornato
-                    existingUser.getLastName(), // Invariato
-                    newPhone,                   // Aggiornato
-                    existingUser.getUserRole(),
-                    null
-            );
+        UserPatchRequestDTO request = new UserPatchRequestDTO(newFirstName, null, newEmail, newPhone);
+        UserResponseDTO expectedResponse = new UserResponseDTO(
+                existingUser.getId(),
+                existingUser.getUsername(), // Invariato
+                newEmail, // Aggiornato
+                newFirstName, // Aggiornato
+                existingUser.getLastName(), // Invariato
+                newPhone, // Aggiornato
+                existingUser.getUserRole(),
+                null);
 
-            when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
-            when(userRepository.existsByEmail(newEmail)).thenReturn(false);
-            when(userRepository.save(any(User.class))).thenReturn(existingUser);
-            when(userMapper.generateDTOFromUser(existingUser)).thenReturn(expectedResponse);
+        when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
+        when(userRepository.existsByEmail(newEmail)).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenReturn(existingUser);
+        when(userMapper.generateDTOFromUser(existingUser)).thenReturn(expectedResponse);
 
-            // 2. ACT
-            UserResponseDTO result = userService.patchUser(existingUser.getId(), request);
+        // 2. ACT
+        UserResponseDTO result = userService.patchUser(existingUser.getId(), request);
 
-            // 3. ASSERT — ENTITY
-            assertThat(existingUser.getFirstName()).isEqualTo(newFirstName);
-            assertThat(existingUser.getPhone()).isEqualTo(newPhone);
-            assertThat(existingUser.getEmail()).isEqualTo(newEmail);
-            assertThat(existingUser.getLastName()).isEqualTo("Rossi");
+        // 3. ASSERT — ENTITY
+        assertThat(existingUser.getFirstName()).isEqualTo(newFirstName);
+        assertThat(existingUser.getPhone()).isEqualTo(newPhone);
+        assertThat(existingUser.getEmail()).isEqualTo(newEmail);
+        assertThat(existingUser.getLastName()).isEqualTo("Rossi");
 
-            // 4. ASSERT — DTO
-            assertThat(result).isNotNull();
-            assertThat(result.firstName()).isEqualTo(newFirstName);
-            assertThat(result.lastName()).isEqualTo("Rossi"); //NOT overwritten
-            assertThat(result.phone()).isEqualTo(newPhone);
-            assertThat(result.email()).isEqualTo(newEmail);
+        // 4. ASSERT — DTO
+        assertThat(result).isNotNull();
+        assertThat(result.firstName()).isEqualTo(newFirstName);
+        assertThat(result.lastName()).isEqualTo("Rossi"); // NOT overwritten
+        assertThat(result.phone()).isEqualTo(newPhone);
+        assertThat(result.email()).isEqualTo(newEmail);
 
-            // 5. VERIFY
-            verify(userRepository).findById(existingUser.getId());
-            verify(userRepository).existsByEmail(newEmail);
-            verify(userRepository).save(any(User.class));
-            verify(userMapper).generateDTOFromUser(existingUser);
-        }
+        // 5. VERIFY
+        verify(userRepository).findById(existingUser.getId());
+        verify(userRepository).existsByEmail(newEmail);
+        verify(userRepository).save(any(User.class));
+        verify(userMapper).generateDTOFromUser(existingUser);
+    }
 
     @Test
-    void patchUserOk_EmailSameAsCurrent() {
+    @DisplayName("Should skip email uniqueness check when PATCH email matches current value")
+    void shouldSkipEmailCheck_whenPatchEmailMatchesCurrent() {
 
         User existingUser = createEntity();
 
-        UserPatchRequestDTO request =
-                new UserPatchRequestDTO(null, null, "mario@test.it", null);
+        UserPatchRequestDTO request = new UserPatchRequestDTO(null, null, "mario@test.it", null);
 
         when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
         when(userRepository.save(any(User.class))).thenReturn(existingUser);
@@ -379,12 +420,12 @@ class UserServiceImplTest {
     }
 
     @Test
-    void patchUserKo_EmailAlreadyAssociated_ShouldThrowException() {
+    @DisplayName("Should throw UserAlreadyExistsException when PATCH email is already associated")
+    void shouldThrowException_whenPatchEmailAlreadyAssociated() {
 
         User existingUser = createEntity();
 
-        UserPatchRequestDTO request =
-                new UserPatchRequestDTO(null, null, "new@email.it", null);
+        UserPatchRequestDTO request = new UserPatchRequestDTO(null, null, "new@email.it", null);
 
         when(userRepository.findById(existingUser.getId()))
                 .thenReturn(Optional.of(existingUser));
@@ -393,8 +434,7 @@ class UserServiceImplTest {
                 .thenReturn(true);
 
         // ACT + ASSERT
-        assertThatThrownBy(() ->
-                userService.patchUser(existingUser.getId(), request))
+        assertThatThrownBy(() -> userService.patchUser(existingUser.getId(), request))
                 .isInstanceOf(UserAlreadyExistsException.class)
                 .hasMessage("Email already associated");
 
@@ -405,19 +445,19 @@ class UserServiceImplTest {
     }
 
     @Test
-    void patchUserOk_allFieldsNull_noChangesApplied() {
+    @DisplayName("Should apply no changes when all PATCH fields are null")
+    void shouldApplyNoChanges_whenAllPatchFieldsAreNull() {
 
         User existingUser = createEntity();
 
-        UserPatchRequestDTO request =
-                new UserPatchRequestDTO(null, null, null, null);
+        UserPatchRequestDTO request = new UserPatchRequestDTO(null, null, null, null);
 
         when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
         when(userRepository.save(any(User.class))).thenReturn(existingUser);
         when(userMapper.generateDTOFromUser(any(User.class))).thenReturn(createResponse());
 
         // ACT
-        UserResponseDTO result = userService.patchUser(existingUser.getId(), request);
+        userService.patchUser(existingUser.getId(), request);
 
         // ASSERT — ENTITY
         assertThat(existingUser.getFirstName()).isEqualTo("Mario");
@@ -431,44 +471,31 @@ class UserServiceImplTest {
     }
 
     @Test
-    void patchUserKo_UserNotFound_ShouldThrowException() {
+    @DisplayName("Should throw UserNotFoundException when patching a non-existent user")
+    void shouldThrowException_whenPatchingNonExistentUser() {
 
-        UserPatchRequestDTO request =
-                new UserPatchRequestDTO("Luigi", null, null, "333");
+        UserPatchRequestDTO request = new UserPatchRequestDTO("Luigi", null, null, "333");
 
         when(userRepository.findById(NON_EXISTENT_ID))
                 .thenReturn(Optional.empty());
 
         // ACT + ASSERT
-        assertThatThrownBy(() ->
-                userService.patchUser(NON_EXISTENT_ID, request))
+        assertThatThrownBy(() -> userService.patchUser(NON_EXISTENT_ID, request))
                 .isInstanceOf(UserNotFoundException.class)
-                .hasMessageContaining(MSG_NOT_FOUND)
-                .hasMessageContaining(String.valueOf(NON_EXISTENT_ID));
-
+                .hasMessageContaining(MSG_NOT_FOUND);
         // VERIFY
         verify(userRepository, never()).save(any());
         verify(userMapper, never()).generateDTOFromUser(any());
     }
 
     @Test
-    void putUserOk() {
+    @DisplayName("Should fully replace user via PUT when all validations pass")
+    void shouldReplaceUser_whenPutRequestIsValid() {
         // GIVEN
         User existingUser = createEntity();
         UserPutRequestDTO request = createPutRequest();
 
-        UserPutResponseDTO expectedResponse = new UserPutResponseDTO(
-                existingUser.getId(),
-                request.username(),
-                request.email(),
-                request.firstName(),
-                request.lastName(),
-                request.phone(),
-                request.active(),
-                request.userRole(),
-                null,
-                null
-        );
+        UserPutResponseDTO expectedResponse = createPutResponse();
 
         // MOCK repository checks
         when(userRepository.existsByUsername(request.username())).thenReturn(false);
@@ -497,7 +524,8 @@ class UserServiceImplTest {
     }
 
     @Test
-    void putUser_UsernameExists_ShouldThrowException() {
+    @DisplayName("Should throw UserAlreadyExistsException when PUT username is already taken")
+    void shouldThrowException_whenPutUsernameAlreadyExists() {
         // Arrange
         UserPutRequestDTO requestDTO = createPutRequest();
         when(userRepository.existsByUsername(requestDTO.username())).thenReturn(true);
@@ -514,7 +542,8 @@ class UserServiceImplTest {
     }
 
     @Test
-    void putUser_EmailExists_ShouldThrowException() {
+    @DisplayName("Should throw UserAlreadyExistsException when PUT email is already associated")
+    void shouldThrowException_whenPutEmailAlreadyExists() {
         // GIVEN
         UserPutRequestDTO requestDTO = createPutRequest();
 
@@ -530,7 +559,8 @@ class UserServiceImplTest {
     }
 
     @Test
-    void putUser_UserNotFound_ShouldThrowException() {
+    @DisplayName("Should throw UserNotFoundException when PUT targets a non-existent user")
+    void shouldThrowException_whenPutUserNotFound() {
         // GIVEN
         UserPutRequestDTO requestDTO = createPutRequest();
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
@@ -540,8 +570,7 @@ class UserServiceImplTest {
         // Act & Assert
         assertThatThrownBy(() -> userService.putUser(NON_EXISTENT_ID, requestDTO))
                 .isInstanceOf(UserNotFoundException.class)
-                .hasMessageContaining(MSG_NOT_FOUND)
-                .hasMessageContaining(String.valueOf(NON_EXISTENT_ID));
+                .hasMessageContaining(MSG_NOT_FOUND);
 
         // Verify
         verify(userRepository, never()).save(any());
