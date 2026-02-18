@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.ecommerce.user.constant.ErrorConstants.*;
+import static com.ecommerce.user.constant.LogCode.*;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
@@ -28,11 +29,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // --- 1. CUSTOM EXCEPTION HANDLING ---
     @ExceptionHandler(UserNotFoundException.class)
     public ProblemDetail handleUserNotFound(UserNotFoundException ex) {
+        log.warn("[{}] {}: {}", USER_NOT_FOUND, USER_NOT_FOUND.description(), ex.getMessage());
         return createProblemDetail(ex, HttpStatus.NOT_FOUND, "Resource not found", TYPE_USER_NOT_FOUND);
     }
 
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ProblemDetail handleUserAlreadyExists(UserAlreadyExistsException ex) {
+        // Determine whether it's a username or email conflict from the exception
+        // message
+        var logCode = ex.getMessage().toLowerCase().contains("username")
+                ? USERNAME_ALREADY_EXISTS
+                : EMAIL_ALREADY_EXISTS;
+        log.warn("[{}] {}: {}", logCode, logCode.description(), ex.getMessage());
         return createProblemDetail(ex, HttpStatus.CONFLICT, "Data conflict", TYPE_USER_CONFLICT);
     }
 
@@ -50,8 +58,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .collect(Collectors.toMap(
                         FieldError::getField,
                         error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "Generic Error",
-                        (existing, replacement) -> existing
-                ));
+                        (existing, replacement) -> existing));
+
+        log.warn("[{}] {}: {}", VALIDATION_FAILED, VALIDATION_FAILED.description(), errors);
 
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
         problemDetail.setTitle("Invalid input data");
@@ -66,12 +75,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // --- 3. CATCH-ALL ---
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleAllUncaughtException(Exception ex) {
-        log.error("UNHANDLED ERROR: ", ex); // Logghiamo lo stack trace per il debug interno
+        log.error("[{}] {}", INTERNAL_ERROR, INTERNAL_ERROR.description(), ex);
 
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR,
-                "An unexpected error occurred. Contact support if the problem persists"
-        );
+                "An unexpected error occurred. Contact support if the problem persists");
         problemDetail.setTitle("Internal Server Error");
         problemDetail.setType(TYPE_GENERIC_ERROR);
         problemDetail.setProperty("service", serviceName);
@@ -82,7 +90,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // HELPER METHOD
     private ProblemDetail createProblemDetail(Exception ex, HttpStatus status, String title, URI type) {
-        log.warn("{}: {}", title, ex.getMessage());
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
         problemDetail.setTitle(title);
         problemDetail.setType(type);
