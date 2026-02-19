@@ -6,7 +6,7 @@ import com.ecommerce.user.exception.UserNotFoundException;
 import com.ecommerce.user.model.User;
 import com.ecommerce.user.repository.UserRepository;
 import com.ecommerce.user.service.impl.UserServiceImpl;
-import com.ecommerce.user.util.UserMapper;
+import com.ecommerce.user.mapper.UserMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

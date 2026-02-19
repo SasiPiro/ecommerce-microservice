@@ -1,4 +1,4 @@
-package com.ecommerce.user.util;
+package com.ecommerce.user.mapper;
 
 import com.ecommerce.user.dto.UserPutRequestDTO;
 import com.ecommerce.user.dto.UserPutResponseDTO;
@@ -60,7 +60,6 @@ public class UserMapper {
         user.setPhone(dto.phone());
         user.setActive(dto.active());
         user.setUserRole(dto.userRole());
-        user.setUpdatedAt(LocalDateTime.now());
         return user;
     }
 }

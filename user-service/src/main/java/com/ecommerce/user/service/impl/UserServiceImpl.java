@@ -1,7 +1,7 @@
 package com.ecommerce.user.service.impl;
 
 import com.ecommerce.user.dto.*;
-import com.ecommerce.user.util.UserMapper;
+import com.ecommerce.user.mapper.UserMapper;
 import com.ecommerce.user.exception.UserAlreadyExistsException;
 import com.ecommerce.user.exception.UserNotFoundException;
 import com.ecommerce.user.model.User;
