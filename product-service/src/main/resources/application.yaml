@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: product-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:25432/product-db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+    jpa:
+      hibernate:
+        ddl-auto: create # in prod set to update with db update scripts
+      show-sql: false
+      properties:
+        hibernate:
+          format_sql: true
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+
+    data:
+      web:
+        pageable:
+          default-page-size: 10
+          max-page-size: 50
+
+  server:
+    port: 8082
+
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: "*"
+
+  logging:
+    level:
+      root: INFO
+      com.ecommerce.user: DEBUG # Abilita i log DEBUG per il nostro codice applicativo
