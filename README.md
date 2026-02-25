@@ -23,7 +23,6 @@
 - [Getting Started](#getting-started)
 - [API Documentation](#api-documentation)
 - [Testing Strategy](#testing-strategy)
-- [Contributing](#contributing)
 - [License](#license)
 
 ---
