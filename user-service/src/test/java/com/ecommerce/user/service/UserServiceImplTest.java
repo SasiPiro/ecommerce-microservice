@@ -83,9 +83,9 @@ class UserServiceImplTest {
 
         when(userRepository.existsByUsername(request.username())).thenReturn(false);
         when(userRepository.existsByEmail(request.email())).thenReturn(false);
-        when(userMapper.generateUserFromDTO(request)).thenReturn(newUser);
+        when(userMapper.toEntity(request)).thenReturn(newUser);
         when(userRepository.save(any(User.class))).thenReturn(newUser);
-        when(userMapper.generateDTOFromUser(newUser)).thenReturn(expectedResponse);
+        when(userMapper.toResponseDTO(newUser)).thenReturn(expectedResponse);
         // WHEN
         UserResponseDTO response = userService.createUser(request);
 
@@ -96,9 +96,9 @@ class UserServiceImplTest {
 
         verify(userRepository).existsByUsername(request.username());
         verify(userRepository).existsByEmail(request.email());
-        verify(userMapper).generateUserFromDTO(request);
+        verify(userMapper).toEntity(request);
         verify(userRepository).save(newUser);
-        verify(userMapper).generateDTOFromUser(newUser);
+        verify(userMapper).toResponseDTO(newUser);
     }
 
     @Test
@@ -118,7 +118,7 @@ class UserServiceImplTest {
         // VERIFY
         verify(userRepository).existsByUsername(request.username());
         verify(userRepository, never()).existsByEmail(anyString());
-        verify(userMapper, never()).generateUserFromDTO(any());
+        verify(userMapper, never()).toEntity(any());
         verify(userRepository, never()).save(any());
     }
 
@@ -141,7 +141,7 @@ class UserServiceImplTest {
         // the entity has not been created.
         verify(userRepository).existsByUsername(request.username());
         verify(userRepository).existsByEmail(request.email());
-        verify(userMapper, never()).generateUserFromDTO(any());
+        verify(userMapper, never()).toEntity(any());
         verify(userRepository, never()).save(any());
     }
 
@@ -165,8 +165,8 @@ class UserServiceImplTest {
 
         // MOCKING
         when(userRepository.findAll(any(Pageable.class))).thenReturn(userPage);
-        when(userMapper.generateDTOFromUser(user1)).thenReturn(responseDTO1);
-        when(userMapper.generateDTOFromUser(user2)).thenReturn(responseDTO2);
+        when(userMapper.toResponseDTO(user1)).thenReturn(responseDTO1);
+        when(userMapper.toResponseDTO(user2)).thenReturn(responseDTO2);
 
         // WHEN
         Page<UserResponseDTO> result = userService.getAllUsers(pageable);
@@ -180,7 +180,7 @@ class UserServiceImplTest {
 
         // VERIFY
         verify(userRepository).findAll(pageable);
-        verify(userMapper, times(2)).generateDTOFromUser(any(User.class));
+        verify(userMapper, times(2)).toResponseDTO(any(User.class));
     }
 
     @Test
@@ -209,7 +209,7 @@ class UserServiceImplTest {
         User user = createEntity();
 
         when(userRepository.findById(VALID_ID)).thenReturn(Optional.of(user));
-        when(userMapper.generateDTOFromUser(user)).thenReturn(createResponse());
+        when(userMapper.toResponseDTO(user)).thenReturn(createResponse());
 
         // WHEN
         UserResponseDTO response = userService.findById(VALID_ID);
@@ -219,7 +219,7 @@ class UserServiceImplTest {
         assertThat(response.username()).isEqualTo(user.getUsername());
         assertThat(response.email()).isEqualTo(user.getEmail());
         verify(userRepository).findById(user.getId());
-        verify(userMapper).generateDTOFromUser(user);
+        verify(userMapper).toResponseDTO(user);
     }
 
     @Test
@@ -246,7 +246,7 @@ class UserServiceImplTest {
         UserResponseDTO response = createResponse();
 
         when(userRepository.findByUsername(user.getUsername())).thenReturn(Optional.of(user));
-        when(userMapper.generateDTOFromUser(user)).thenReturn(response);
+        when(userMapper.toResponseDTO(user)).thenReturn(response);
 
         // WHEN
         UserResponseDTO userFound = userService.findByUsername(user.getUsername());
@@ -257,7 +257,7 @@ class UserServiceImplTest {
                 .containsExactly(user.getUsername(), user.getEmail());
 
         verify(userRepository).findByUsername(user.getUsername());
-        verify(userMapper).generateDTOFromUser(user);
+        verify(userMapper).toResponseDTO(user);
     }
 
     @Test
@@ -285,7 +285,7 @@ class UserServiceImplTest {
         User user = createEntity();
 
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(userMapper.generateDTOFromUser(user)).thenReturn(createResponse());
+        when(userMapper.toResponseDTO(user)).thenReturn(createResponse());
 
         // WHEN
         UserResponseDTO userFound = userService.findByEmail(user.getEmail());
@@ -296,7 +296,7 @@ class UserServiceImplTest {
                 .containsExactly(user.getUsername(), user.getEmail());
 
         verify(userRepository).findByEmail(user.getEmail());
-        verify(userMapper).generateDTOFromUser(user);
+        verify(userMapper).toResponseDTO(user);
     }
 
     @Test
@@ -367,7 +367,7 @@ class UserServiceImplTest {
         when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
         when(userRepository.existsByEmail(newEmail)).thenReturn(false);
         when(userRepository.save(any(User.class))).thenReturn(existingUser);
-        when(userMapper.generateDTOFromUser(existingUser)).thenReturn(expectedResponse);
+        when(userMapper.toResponseDTO(existingUser)).thenReturn(expectedResponse);
 
         // 2. ACT
         UserResponseDTO result = userService.patchUser(existingUser.getId(), request);
@@ -389,7 +389,7 @@ class UserServiceImplTest {
         verify(userRepository).findById(existingUser.getId());
         verify(userRepository).existsByEmail(newEmail);
         verify(userRepository).save(any(User.class));
-        verify(userMapper).generateDTOFromUser(existingUser);
+        verify(userMapper).toResponseDTO(existingUser);
     }
 
     @Test
@@ -402,7 +402,7 @@ class UserServiceImplTest {
 
         when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
         when(userRepository.save(any(User.class))).thenReturn(existingUser);
-        when(userMapper.generateDTOFromUser(any(User.class))).thenReturn(createResponse());
+        when(userMapper.toResponseDTO(any(User.class))).thenReturn(createResponse());
 
         // ACT
         UserResponseDTO result = userService.patchUser(existingUser.getId(), request);
@@ -416,7 +416,7 @@ class UserServiceImplTest {
         // VERIFY
         verify(userRepository, never()).existsByEmail(anyString());
         verify(userRepository).save(any(User.class));
-        verify(userMapper).generateDTOFromUser(existingUser);
+        verify(userMapper).toResponseDTO(existingUser);
     }
 
     @Test
@@ -441,7 +441,7 @@ class UserServiceImplTest {
         // VERIFY
         verify(userRepository).existsByEmail(request.email());
         verify(userRepository, never()).save(any());
-        verify(userMapper, never()).generateDTOFromUser(any());
+        verify(userMapper, never()).toResponseDTO(any());
     }
 
     @Test
@@ -454,7 +454,7 @@ class UserServiceImplTest {
 
         when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
         when(userRepository.save(any(User.class))).thenReturn(existingUser);
-        when(userMapper.generateDTOFromUser(any(User.class))).thenReturn(createResponse());
+        when(userMapper.toResponseDTO(any(User.class))).thenReturn(createResponse());
 
         // ACT
         userService.patchUser(existingUser.getId(), request);
@@ -467,7 +467,7 @@ class UserServiceImplTest {
 
         // VERIFY
         verify(userRepository).save(any(User.class));
-        verify(userMapper).generateDTOFromUser(existingUser);
+        verify(userMapper).toResponseDTO(existingUser);
     }
 
     @Test
@@ -485,7 +485,7 @@ class UserServiceImplTest {
                 .hasMessageContaining(MSG_NOT_FOUND);
         // VERIFY
         verify(userRepository, never()).save(any());
-        verify(userMapper, never()).generateDTOFromUser(any());
+        verify(userMapper, never()).toResponseDTO(any());
     }
 
     @Test
@@ -502,9 +502,9 @@ class UserServiceImplTest {
         when(userRepository.existsByEmail(request.email())).thenReturn(false);
         when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));
         // MOCK mapper update
-        when(userMapper.updateUserFromPutDTO(request, existingUser)).thenReturn(existingUser);
+        when(userMapper.updateEntityFromPutDTO(request, existingUser)).thenReturn(existingUser);
         when(userRepository.save(existingUser)).thenReturn(existingUser);
-        when(userMapper.generatePutResponseFromUser(any(User.class))).thenReturn(expectedResponse);
+        when(userMapper.toPutResponseDTO(any(User.class))).thenReturn(expectedResponse);
 
         // WHEN
         UserPutResponseDTO response = userService.putUser(existingUser.getId(), request);
@@ -520,7 +520,7 @@ class UserServiceImplTest {
 
         // VERIFY
         verify(userRepository).save(existingUser);
-        verify(userMapper).generatePutResponseFromUser(existingUser);
+        verify(userMapper).toPutResponseDTO(existingUser);
     }
 
     @Test

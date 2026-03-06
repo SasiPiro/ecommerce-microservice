@@ -50,11 +50,11 @@ public class UserServiceImpl implements UserService {
             throw UserAlreadyExistsException.forEmail();
         }
 
-        User newUser = userMapper.generateUserFromDTO(userRequestDTO);
+        User newUser = userMapper.toEntity(userRequestDTO);
         userRepository.save(newUser);
 
         log.info("User created successfully - id: {}, username: '{}'", newUser.getId(), newUser.getUsername());
-        return userMapper.generateDTOFromUser(newUser);
+        return userMapper.toResponseDTO(newUser);
     }
 
     // -------------------------------------------------------------------------
@@ -68,7 +68,7 @@ public class UserServiceImpl implements UserService {
                 pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
 
         Page<UserResponseDTO> result = userRepository.findAll(pageable)
-                .map(userMapper::generateDTOFromUser);
+                .map(userMapper::toResponseDTO);
 
         log.debug("Returned {} user(s) out of {} total", result.getNumberOfElements(), result.getTotalElements());
         return result;
@@ -79,7 +79,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO findById(Long id) {
         log.debug("Looking up user by id: {}", id);
         return userRepository.findById(id)
-                .map(userMapper::generateDTOFromUser)
+                .map(userMapper::toResponseDTO)
                 .orElseThrow(() -> {
                     log.warn("[{}] User not found - id: {}", USER_NOT_FOUND, id);
                     return UserNotFoundException.forId();
@@ -91,7 +91,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO findByUsername(String username) {
         log.debug("Looking up user by username: '{}'", username);
         return userRepository.findByUsername(username)
-                .map(userMapper::generateDTOFromUser)
+                .map(userMapper::toResponseDTO)
                 .orElseThrow(() -> {
                     log.warn("[{}] User not found - username: '{}'", USER_NOT_FOUND, username);
                     return UserNotFoundException.forUsername(username);
@@ -103,7 +103,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO findByEmail(String email) {
         log.debug("Looking up user by email: '{}'", email);
         return userRepository.findByEmail(email)
-                .map(userMapper::generateDTOFromUser)
+                .map(userMapper::toResponseDTO)
                 .orElseThrow(() -> {
                     log.warn("[{}] User not found - email: '{}'", USER_NOT_FOUND, email);
                     return UserNotFoundException.forEmail(email);
@@ -167,7 +167,7 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        UserResponseDTO response = userMapper.generateDTOFromUser(userRepository.save(user));
+        UserResponseDTO response = userMapper.toResponseDTO(userRepository.save(user));
         log.info("User patched successfully - id: {}", id);
         return response;
     }
@@ -199,10 +199,10 @@ public class UserServiceImpl implements UserService {
                     return UserNotFoundException.forId();
                 });
 
-        User updatedUser = userMapper.updateUserFromPutDTO(userPutRequestDTO, user);
+        User updatedUser = userMapper.updateEntityFromPutDTO(userPutRequestDTO, user);
         userRepository.save(updatedUser);
 
         log.info("User updated successfully - id: {}", id);
-        return userMapper.generatePutResponseFromUser(updatedUser);
+        return userMapper.toPutResponseDTO(updatedUser);
     }
 }

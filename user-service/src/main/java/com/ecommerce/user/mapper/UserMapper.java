@@ -7,12 +7,11 @@ import com.ecommerce.user.dto.UserResponseDTO;
 import com.ecommerce.user.model.User;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-
 @Component
 public class UserMapper {
 
-    public UserResponseDTO generateDTOFromUser(User user){
+    public UserResponseDTO toResponseDTO(User user) {
+        if (user == null) return null;
         return new UserResponseDTO(
                 user.getId(),
                 user.getUsername(),
@@ -21,11 +20,11 @@ public class UserMapper {
                 user.getLastName(),
                 user.getPhone(),
                 user.getUserRole(),
-                user.getCreatedAt()
-        );
+                user.getCreatedAt());
     }
 
-    public User generateUserFromDTO(UserRequestDTO userRequestDTO) {
+    public User toEntity(UserRequestDTO userRequestDTO) {
+        if (userRequestDTO == null) return null;
         User newUser = new User();
         newUser.setUsername(userRequestDTO.username());
         newUser.setEmail(userRequestDTO.email());
@@ -37,7 +36,8 @@ public class UserMapper {
         return newUser;
     }
 
-    public UserPutResponseDTO generatePutResponseFromUser(User user) {
+    public UserPutResponseDTO toPutResponseDTO(User user) {
+        if (user == null) return null;
         return new UserPutResponseDTO(
                 user.getId(),
                 user.getUsername(),
@@ -48,11 +48,11 @@ public class UserMapper {
                 user.isActive(),
                 user.getUserRole(),
                 user.getCreatedAt(),
-                user.getUpdatedAt()
-        );
+                user.getUpdatedAt());
     }
 
-    public User updateUserFromPutDTO(UserPutRequestDTO dto , User user) {
+    public User updateEntityFromPutDTO(UserPutRequestDTO dto, User user) {
+        if (dto == null) return user;
         user.setUsername(dto.username());
         user.setEmail(dto.email());
         user.setFirstName(dto.firstName());
