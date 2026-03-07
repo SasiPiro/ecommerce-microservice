@@ -10,7 +10,7 @@ public record ProductRequestDto(
 
         String description,
 
-        @NotNull(message = "Preice required")
+        @NotNull(message = "Price required")
         @DecimalMin(value = "0.0", inclusive = false, message = "Price must be more than 0")
         BigDecimal price,
 

@@ -35,4 +35,4 @@ spring:
   logging:
     level:
       root: INFO
-      com.ecommerce.user: DEBUG # Abilita i log DEBUG per il nostro codice applicativo
+      com.ecommerce.product: DEBUG # Abilita i log DEBUG per il nostro codice applicativo
