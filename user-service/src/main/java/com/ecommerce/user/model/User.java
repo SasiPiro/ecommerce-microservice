@@ -6,20 +6,20 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Entity
-@Table(name="users")
+@Table(name = "users")
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false , length=50 , unique = true)
+    @Column(nullable = false, length = 50, unique = true)
     private String username;
 
-    @Column(nullable = false , length=50 , unique = true)
+    @Column(nullable = false, length = 50, unique = true)
     private String email;
 
-    @Column(nullable = false , length=100)
+    @Column(nullable = false, length = 100)
     private String password;
 
     @Column(name = "first_name")
@@ -31,17 +31,17 @@ public class User {
     @Column(nullable = false)
     private boolean active;
 
-    @Column(nullable = false , name="created_at" , updatable = false)
+    @Column(nullable = false, name = "created_at", updatable = false)
     private LocalDateTime createdAt;
-    @Column(nullable = false , name="updated_at")
+    @Column(nullable = false, name = "updated_at")
     private LocalDateTime updatedAt;
 
     @Column(name = "user_role")
     @Enumerated(EnumType.STRING)
     private UserRole userRole;
 
-
-    public User(Long id, String username, String email, String password, String firstName, String lastName, String phone, UserRole userRole) {
+    public User(Long id, String username, String email, String password, String firstName, String lastName,
+            String phone, UserRole userRole) {
         this();
         this.id = id;
         this.username = username;
@@ -146,11 +146,11 @@ public class User {
     public void setId(Long id) {
         this.id = id;
     }
-    
+
     @PreUpdate
-	public void preUpdate() {
-		this.updatedAt = LocalDateTime.now();
-	}
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 
     public enum UserRole {
         CUSTOMER,
@@ -160,7 +160,8 @@ public class User {
 
     @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
+        if (o == null || getClass() != o.getClass())
+            return false;
         User user = (User) o;
         return Objects.equals(id, user.id);
     }
