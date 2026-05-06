@@ -1,6 +1,7 @@
 package com.ecommerce.user.integration;
 
 import com.ecommerce.user.bin.UserServiceApplication;
+import com.ecommerce.user.constant.UserPermissionConstant;
 import com.ecommerce.user.dto.*;
 import com.ecommerce.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,11 +39,25 @@ class UserIntegrationH2Test {
     @Value("${test.server.host:localhost}")
     private String host;
 
+    // HeaderAuthenticationFilter constants
+    private static final String HEADER_USER_ID = "X-User-Id";
+    private static final String HEADER_USER_PERMISSIONS = "X-User-Permissions";
+    private static final String HEADER_USER_ROLES = "X-User-Roles";
+    private static final String HEADER_USERNAME = "X-Username";
 
     @BeforeEach
     void setUp() {
         // CLEAN SLATE
-        restTemplate = new TestRestTemplate(new RestTemplateBuilder().rootUri("http://" + host + ":" + port));
+        restTemplate = new TestRestTemplate(new RestTemplateBuilder()
+                .rootUri("http://" + host + ":" + port)
+                .defaultHeader(HEADER_USER_ID, "999")
+                .defaultHeader(HEADER_USERNAME, "admin_test")
+                .defaultHeader(HEADER_USER_ROLES, "ADMIN,USER")
+                .defaultHeader(HEADER_USER_PERMISSIONS, String.join(",",
+                        UserPermissionConstant.USER_READ,
+                        UserPermissionConstant.USER_WRITE,
+                        UserPermissionConstant.USER_DELETE)));
+
         baseUrl = "/api/v1/users";
         userRepository.deleteAll();
     }
@@ -57,7 +72,8 @@ class UserIntegrationH2Test {
     void fullUserLifecycle_IntegrationFlow() {
         // --- STEP 1: CREATE ---
         UserRequestDTO createReq = createRequest();
-        ResponseEntity<UserResponseDTO> createRes = restTemplate.postForEntity(baseUrl, createReq, UserResponseDTO.class);
+        ResponseEntity<UserResponseDTO> createRes = restTemplate.postForEntity(baseUrl, createReq,
+                UserResponseDTO.class);
         Long userId = Objects.requireNonNull(createRes.getBody()).id();
 
         assertThat(createRes.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -65,7 +81,8 @@ class UserIntegrationH2Test {
         assertThat(createRes.getBody().firstName()).isEqualTo(createReq.firstName());
 
         // --- STEP 2: GET BY ID ---
-        ResponseEntity<UserResponseDTO> getRes = restTemplate.getForEntity(baseUrl + "/" + userId, UserResponseDTO.class);
+        ResponseEntity<UserResponseDTO> getRes = restTemplate.getForEntity(baseUrl + "/" + userId,
+                UserResponseDTO.class);
         assertThat(getRes.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(getRes.getBody()).isNotNull();
         assertThat(getRes.getBody().firstName()).isEqualTo("Mario");
@@ -89,8 +106,8 @@ class UserIntegrationH2Test {
         // --- STEP 4: DELETE ---
         restTemplate.delete(baseUrl + "/" + userId);
 
-
-        ResponseEntity<ProblemDetail> notFoundRes = restTemplate.getForEntity(baseUrl + "/" + userId, ProblemDetail.class);
+        ResponseEntity<ProblemDetail> notFoundRes = restTemplate.getForEntity(baseUrl + "/" + userId,
+                ProblemDetail.class);
         assertThat(notFoundRes.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
@@ -121,15 +138,15 @@ class UserIntegrationH2Test {
     void createUser_InvalidData_Returns400WithErrorsMap() {
         // 1. GIVEN: Request invalida (username corto, email malformata)
         UserRequestDTO invalidRequest = new UserRequestDTO(
-                "ab",           // min 3
+                "ab", // min 3
                 "not-an-email", // @Email
-                "123",          // min 6
-                "", "", ""      // campi vuoti
+                "123", // min 6
+                "", "", "" // campi vuoti
         );
 
         // 2. WHEN
         ResponseEntity<ProblemDetail> response = restTemplate.postForEntity(
-                baseUrl , invalidRequest, ProblemDetail.class);
+                baseUrl, invalidRequest, ProblemDetail.class);
 
         // 3. ASSERT
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -158,12 +175,44 @@ class UserIntegrationH2Test {
                 baseUrl + "/" + nonExistentId,
                 HttpMethod.PATCH,
                 new HttpEntity<>(patch),
-                ProblemDetail.class
-        );
+                ProblemDetail.class);
 
         // THEN
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getTitle()).isEqualTo("Resource not found");
+    }
+
+    @Test
+    @DisplayName("Security Error - Should return 403 when user has read-only permission but tries to write")
+    void createUser_WithReadOnlyPermissions_Returns403Forbidden() {
+        // 1. GIVEN: Un utente che ha SOLO il permesso di lettura
+        TestRestTemplate readerTemplate = new TestRestTemplate(new RestTemplateBuilder()
+                .rootUri("http://" + host + ":" + port)
+                .defaultHeader("X-User-Id", "456")
+                .defaultHeader("X-Username", "reader_user")
+                .defaultHeader("X-User-Roles", "USER")
+                .defaultHeader("X-User-Permissions", "user.read") // NON ha user.write
+        );
+
+        UserRequestDTO request = createRequest();
+
+        // 2. WHEN: Prova a chiamare un endpoint che richiede @PreAuthorize("hasAuthority('user.write')")
+        ResponseEntity<Object> response = readerTemplate.postForEntity(baseUrl, request, Object.class);
+
+        // 3. ASSERT: Deve tornare 403 Forbidden
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("Security - Should skip authentication if headers are missing")
+    void missingHeaders_ShouldNotAuthenticate() {
+        // RestTemplate without header
+        TestRestTemplate anonymousTemplate = new TestRestTemplate(new RestTemplateBuilder()
+                .rootUri("http://" + host + ":" + port));
+
+        ResponseEntity<Object> response = anonymousTemplate.getForEntity(baseUrl, Object.class);
+
+        assertThat(response.getStatusCode()).isIn(HttpStatus.FORBIDDEN, HttpStatus.UNAUTHORIZED);
     }
 }

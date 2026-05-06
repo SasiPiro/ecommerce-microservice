@@ -10,13 +10,7 @@ spring:
     show-sql: false
     database-platform: org.hibernate.dialect.H2Dialect
 
-  data:
-    web:
-      pageable:
-        default-page-size: 10
-        max-page-size: 50
-
   sql:
     init:
-      mode: always          # Esegue schema.sql
+      mode: always  # Esegue schema.sql
       data-locations: ""    # Disabilita il caricamento di data.sql (evita che il seed di prod inquini i test)

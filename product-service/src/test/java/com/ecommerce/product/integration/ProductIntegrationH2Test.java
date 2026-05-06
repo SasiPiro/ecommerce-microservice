@@ -1,6 +1,7 @@
 package com.ecommerce.product.integration;
 
 import com.ecommerce.product.ProductServiceApplication;
+import com.ecommerce.product.constant.CategoryProductPermissionConstant;
 import com.ecommerce.product.dto.*;
 import com.ecommerce.product.repository.CategoryRepository;
 import com.ecommerce.product.repository.ProductRepository;
@@ -44,11 +45,29 @@ class ProductIntegrationH2Test {
     @Value("${test.server.host:localhost}")
     private String host;
 
+    // HeaderAuthenticationFilter constants
+    private static final String HEADER_USER_ID = "X-User-Id";
+    private static final String HEADER_USER_PERMISSIONS = "X-User-Permissions";
+    private static final String HEADER_USER_ROLES = "X-User-Roles";
+    private static final String HEADER_USERNAME = "X-Username";
+
 
     @BeforeEach
     void setUp() {
         // CLEAN SLATE
-        restTemplate = new TestRestTemplate(new RestTemplateBuilder().rootUri("http://" + host + ":" + port));
+        restTemplate = new TestRestTemplate(new RestTemplateBuilder()
+                .rootUri("http://" + host + ":" + port)
+                .defaultHeader(HEADER_USER_ID, "999")
+                .defaultHeader(HEADER_USERNAME, "admin_test")
+                .defaultHeader(HEADER_USER_ROLES, "ADMIN,USER")
+                .defaultHeader(HEADER_USER_PERMISSIONS, String.join(",",
+                        CategoryProductPermissionConstant.CATEGORY_READ,
+                        CategoryProductPermissionConstant.CATEGORY_WRITE,
+                        CategoryProductPermissionConstant.CATEGORY_DELETE,
+                        CategoryProductPermissionConstant.PRODUCT_READ,
+                        CategoryProductPermissionConstant.PRODUCT_WRITE,
+                        CategoryProductPermissionConstant.PRODUCT_DELETE)));
+
         baseProductsUrl = "/api/v1/products";
         baseCategoriesUrl = "/api/v1/categories";
         
@@ -155,5 +174,40 @@ class ProductIntegrationH2Test {
         Map<String, String> errors = (Map<String, String>) body.getProperties().get("errors");
 
         assertThat(errors).containsKeys("price", "stock");
+    }
+
+    @Test
+    @DisplayName("Security Error - Should return 403 when user has read-only permission but tries to write")
+    void createProduct_WithReadOnlyPermissions_Returns403Forbidden() {
+        // 1. GIVEN: Un utente che ha SOLO il permesso di lettura
+        TestRestTemplate readerTemplate = new TestRestTemplate(new RestTemplateBuilder()
+                .rootUri("http://" + host + ":" + port)
+                .defaultHeader("X-User-Id", "456")
+                .defaultHeader("X-Username", "reader_user")
+                .defaultHeader("X-User-Roles", "USER")
+                .defaultHeader("X-User-Permissions", "product.read") // NON ha product.write
+        );
+
+        ProductRequestDto prodReq = new ProductRequestDto(
+                "IPhone 15", "Apple Smartphone", new BigDecimal("999.00"), 100, 1L
+        );
+
+        // 2. WHEN: Prova a chiamare un endpoint che richiede @PreAuthorize("hasAuthority('user.write')")
+        ResponseEntity<Object> response = readerTemplate.postForEntity(baseProductsUrl, prodReq, Object.class);
+
+        // 3. ASSERT: Deve tornare 403 Forbidden
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("Security - Should skip authentication if headers are missing")
+    void missingHeaders_ShouldNotAuthenticate() {
+        // RestTemplate without header
+        TestRestTemplate anonymousTemplate = new TestRestTemplate(new RestTemplateBuilder()
+                .rootUri("http://" + host + ":" + port));
+
+        ResponseEntity<Object> response = anonymousTemplate.getForEntity(baseProductsUrl, Object.class);
+
+        assertThat(response.getStatusCode()).isIn(HttpStatus.FORBIDDEN, HttpStatus.UNAUTHORIZED);
     }
 }

@@ -14,10 +14,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,10 +44,12 @@ class UserServiceImplTest {
     private static final String MSG_USERNAME_TAKEN = "Username already in use";
     private static final String MSG_EMAIL_TAKEN = "Email already associated";
     private static final String MSG_NOT_FOUND = "User not found";
+    private static final Set<String> DEFAULT_ROLE = Set.of("USER");
+    private static final Set<String> DEFAULT_PERMISSION = Set.of("product.read", "category.read");
 
     // --- FACTORIES (Maintainability) ---
     private User createEntity() {
-        return new User(VALID_ID, "mario88", "mario@test.it", "pass", "Mario", "Rossi", "123", User.UserRole.CUSTOMER);
+        return new User(VALID_ID, "mario88", "mario@test.it", "pass", "Mario", "Rossi", "123");
     }
 
     // Factory per POST
@@ -56,19 +60,18 @@ class UserServiceImplTest {
     // Factory per GET/PATCH Response
     private UserResponseDTO createResponse() {
         return new UserResponseDTO(VALID_ID, "mario88", "mario@test.it", "Mario", "Rossi", "123",
-                User.UserRole.CUSTOMER, null);
+                DEFAULT_ROLE, DEFAULT_PERMISSION, null);
     }
 
     // Factory per PUT Request
     private UserPutRequestDTO createPutRequest() {
-        return new UserPutRequestDTO("mario88", "mario@test.it", "newPass", "Mario", "Rossi", "123", true,
-                User.UserRole.CUSTOMER);
+        return new UserPutRequestDTO("mario88", "mario@test.it", "newPass", "Mario", "Rossi", "123", true);
     }
 
     // Factory per PUT Response
     private UserPutResponseDTO createPutResponse() {
         return new UserPutResponseDTO(VALID_ID, "mario88", "mario@test.it", "Mario", "Rossi", "123", true,
-                User.UserRole.CUSTOMER, null, null);
+                DEFAULT_ROLE, DEFAULT_PERMISSION, null, null);
     }
 
     // --- 1. CREATE (POST) ---
@@ -151,10 +154,11 @@ class UserServiceImplTest {
 
         // GIVEN
         User user1 = createEntity();
-        User user2 = new User(2L, "gianni", "email2@test.it", "pass", "A", "B", "1", User.UserRole.CUSTOMER);
+        User user2 = new User(2L, "gianni", "email2@test.it", "pass", "A", "B", "1");
         UserResponseDTO responseDTO1 = createResponse();
         UserResponseDTO responseDTO2 = new UserResponseDTO(user2.getId(), user2.getUsername(), user2.getEmail(),
-                user2.getFirstName(), user2.getLastName(), user2.getPhone(), user2.getUserRole(), null);
+                user2.getFirstName(), user2.getLastName(), user2.getPhone(),DEFAULT_ROLE,
+                DEFAULT_PERMISSION,null );
 
         // Definiamo il Pageable del test
         Pageable pageable = PageRequest.of(0, 10, Sort.by("username").ascending());
@@ -361,7 +365,8 @@ class UserServiceImplTest {
                 newFirstName, // Aggiornato
                 existingUser.getLastName(), // Invariato
                 newPhone, // Aggiornato
-                existingUser.getUserRole(),
+                DEFAULT_ROLE,
+                DEFAULT_PERMISSION,
                 null);
 
         when(userRepository.findById(existingUser.getId())).thenReturn(Optional.of(existingUser));

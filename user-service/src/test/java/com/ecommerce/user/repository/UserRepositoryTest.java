@@ -32,7 +32,7 @@ class UserRepositoryTest {
 
     // --- FACTORY ---
     private User createEntity() {
-        return new User(null, "mario88", "mario@test.it", "pass", "Mario", "Rossi", "123", User.UserRole.CUSTOMER);
+        return new User(null, "mario88", "mario@test.it", "pass", "Mario", "Rossi", "123");
     }
 
     // --- TEST CREATE ---
@@ -48,7 +48,6 @@ class UserRepositoryTest {
         assertThat(savedUser.isActive()).isTrue(); // Default del costruttore
         assertThat(savedUser.getCreatedAt()).isNotNull(); // Gestito da @PrePersist
         assertThat(savedUser.getUpdatedAt()).isNotNull(); // Gestito da costruttore
-        assertThat(savedUser.getUserRole()).isEqualTo(User.UserRole.CUSTOMER);
     }
 
     @Test
@@ -58,7 +57,7 @@ class UserRepositoryTest {
         entityManager.persistAndFlush(createEntity());
 
         // same username of the first user
-        User user2 = new User(null, "mario88", "email2@test.it", "pass", "C", "D", "2", User.UserRole.CUSTOMER);
+        User user2 = new User(null, "mario88", "email2@test.it", "pass", "C", "D", "2");
 
         // WHEN AND THEN
         assertThatThrownBy(() -> userRepository.save(user2))
@@ -80,7 +79,6 @@ class UserRepositoryTest {
         // THEN
         assertThat(opt).isPresent();
         assertThat(opt.get().getUsername()).isEqualTo("mario88");
-        assertThat(opt.get().getUserRole()).isEqualTo(User.UserRole.CUSTOMER);
     }
 
     @Test
@@ -256,7 +254,7 @@ class UserRepositoryTest {
     @DisplayName("Should return empty content when requested page index is out of bounds")
     void shouldReturnEmptyContent_whenPageIndexIsOutOfBounds() {
         // 1. GIVEN: Salviamo 2 utenti nel DB
-        entityManager.persist(new User(null, "u1", "u1@e.it", "p", "A", "B", "1", User.UserRole.CUSTOMER));
+        entityManager.persist(new User(null, "u1", "u1@e.it", "p", "A", "B", "1"));
         entityManager.persist(createEntity());
         entityManager.flush();
         // Chiediamo la pagina 5 (che non esiste, dato che con size 10 avremmo solo la
@@ -305,7 +303,7 @@ class UserRepositoryTest {
         // GIVEN
         entityManager.persistAndFlush(createEntity());
         User u2 = entityManager
-                .persistAndFlush(new User(null, "user2", "email2@test.it", "p", "A", "B", "1", User.UserRole.CUSTOMER));
+                .persistAndFlush(new User(null, "user2", "email2@test.it", "p", "A", "B", "1"));
 
         // WHEN: Provo a cambiare l'email di u2 con quella di u1
         u2.setEmail("mario@test.it");

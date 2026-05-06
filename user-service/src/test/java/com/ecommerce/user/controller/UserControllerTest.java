@@ -16,6 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,6 +41,8 @@ class UserControllerTest {
         private static final Long INVALID_ID = 999L;
         private static final String DEFAULT_USERNAME = "mario_rossi";
         private static final String DEFAULT_EMAIL = "mario@email.com";
+        private static final Set<String> DEFAULT_ROLE = Set.of("USER");
+        private static final Set<String> DEFAULT_PERMISSION = Set.of("product.read", "category.read");
 
         // Paths
         private static final String BASE_PATH = "/api/v1/users";
@@ -54,19 +57,18 @@ class UserControllerTest {
         // Factory per GET/PATCH Response
         private UserResponseDTO createResponse() {
                 return new UserResponseDTO(VALID_ID, DEFAULT_USERNAME, DEFAULT_EMAIL, "Mario", "Rossi", "123",
-                                User.UserRole.CUSTOMER, null);
+                        DEFAULT_ROLE, DEFAULT_PERMISSION, null);
         }
 
         // Factory per PUT Request
         private UserPutRequestDTO createPutRequest() {
-                return new UserPutRequestDTO(DEFAULT_USERNAME, DEFAULT_EMAIL, "abc123$$", "Mario", "Rossi", "123", true,
-                                User.UserRole.CUSTOMER);
+                return new UserPutRequestDTO(DEFAULT_USERNAME, DEFAULT_EMAIL, "abc123$$", "Mario", "Rossi", "123", true);
         }
 
         // Factory per PUT Response
         private UserPutResponseDTO createPutResponse() {
                 return new UserPutResponseDTO(VALID_ID, DEFAULT_USERNAME, DEFAULT_EMAIL, "Mario", "Rossi", "123", true,
-                                User.UserRole.CUSTOMER, null, null);
+                        DEFAULT_ROLE, DEFAULT_PERMISSION, null, null);
         }
 
         // --- 1. CREATE (POST) ---
@@ -135,7 +137,8 @@ class UserControllerTest {
                 // Given
                 List<UserResponseDTO> userList = List.of(
                                 createResponse(),
-                                new UserResponseDTO(2L, "user2", "u2@test.com", "User", "Two", "222", null, null));
+                                new UserResponseDTO(2L, "user2", "u2@test.com", "User",
+                                        "Two", "222", DEFAULT_ROLE, DEFAULT_PERMISSION,null));
 
                 PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("username").ascending());
                 Page<UserResponseDTO> userPage = new PageImpl<>(userList, pageRequest, userList.size());
@@ -266,7 +269,7 @@ class UserControllerTest {
         void updateFull_WithInvalidDTO_ReturnsBadRequest() throws Exception {
                 // Given : invalid email
                 UserPutRequestDTO invalidDto = new UserPutRequestDTO(null, "invalid-email", null, null, null, null,
-                                true, null);
+                                true);
 
                 // When & Then
                 mockMvc.perform(put(ID_PATH, VALID_ID)
@@ -321,8 +324,9 @@ class UserControllerTest {
                                 "Mario",
                                 "Rossi",
                                 expectedPhone,
-                                User.UserRole.CUSTOMER,
-                                null);
+                                DEFAULT_ROLE,
+                                DEFAULT_PERMISSION,
+                        null);
 
                 when(userService.patchUser(eq(VALID_ID), any(UserPatchRequestDTO.class))).thenReturn(response);
 
