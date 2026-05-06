@@ -8,7 +8,12 @@ spring:
     password: postgres
     driver-class-name: org.postgresql.Driver
 
+  sql:
+    init:
+      mode: always
+
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: create # in prod set to update with db update scripts
     show-sql: false
@@ -26,6 +31,7 @@ spring:
 server:
   port: 8081
 
+#Actuator
 management:
   endpoints:
     web:
@@ -36,3 +42,6 @@ logging:
   level:
     root: INFO
     com.ecommerce.user: DEBUG # Abilita i log DEBUG per il nostro codice applicativo
+
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm-change-in-production}

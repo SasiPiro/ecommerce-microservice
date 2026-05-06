@@ -3,12 +3,15 @@ package com.ecommerce.user.controller;
 import com.ecommerce.user.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -20,8 +23,15 @@ import org.springframework.http.ResponseEntity;
 /**
  * OpenAPI contract for the User Management API.
  * All Swagger/OpenAPI documentation lives here; the implementing controller
- * stays focused on Spring MVC routing and business logic.
+ * stays focused on Spring routing and business logic.
  */
+@SecurityScheme(
+        name = "bearerAuth",
+        type = SecuritySchemeType.HTTP,
+        bearerFormat = "JWT",
+        scheme = "bearer"
+)
+@SecurityRequirement(name = "bearerAuth")
 @Tag(name = "User Management", description = "Full CRUD operations for user accounts within the e-commerce platform. "
                 + "Paginated collections follow the Spring Data Page contract.")
 public interface UserApiDoc {

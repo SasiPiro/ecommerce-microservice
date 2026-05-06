@@ -1,9 +1,9 @@
 package com.ecommerce.user.dto;
 
-import com.ecommerce.user.model.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Schema(description = "User data returned after creation or lookup")
 public record UserResponseDTO(
@@ -19,7 +19,9 @@ public record UserResponseDTO(
 
                 @Schema(description = "Phone number", example = "+39 333 1234567") String phone,
 
-                @Schema(description = "Assigned role", example = "CUSTOMER") User.UserRole userRole,
+                @Schema(description = "Assigned role", example = "CUSTOMER") Set<String> roles,
+
+                @Schema(description = "Assigned role", example = "CUSTOMER") Set<String> permissions,
 
                 @Schema(description = "Account creation timestamp", example = "2025-01-15T10:30:00") LocalDateTime createdAt) {
 }

@@ -21,7 +21,5 @@ public record UserPutRequestDTO(
 
                 @Schema(description = "Phone number", example = "+39 333 9999999") String phone,
 
-                @Schema(description = "Account active status", example = "true") boolean active,
-
-                @Schema(description = "User role", example = "SELLER") @NotNull User.UserRole userRole) {
+                @Schema(description = "Account active status", example = "true") boolean active) {
 }

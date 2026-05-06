@@ -4,8 +4,14 @@ import com.ecommerce.user.dto.UserPutRequestDTO;
 import com.ecommerce.user.dto.UserPutResponseDTO;
 import com.ecommerce.user.dto.UserRequestDTO;
 import com.ecommerce.user.dto.UserResponseDTO;
+import com.ecommerce.user.model.Permission;
+import com.ecommerce.user.model.Role;
 import com.ecommerce.user.model.User;
 import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 public class UserMapper {
@@ -19,7 +25,8 @@ public class UserMapper {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getPhone(),
-                user.getUserRole(),
+                extractRoleNames(user.getRoles()),
+                extractPermissionNames(user.getRoles()),
                 user.getCreatedAt());
     }
 
@@ -31,7 +38,7 @@ public class UserMapper {
         newUser.setFirstName(userRequestDTO.firstName());
         newUser.setLastName(userRequestDTO.lastName());
         newUser.setPhone(userRequestDTO.phone());
-        newUser.setUserRole(User.UserRole.CUSTOMER); // Default role
+        // Default role al momento newHashSet
         newUser.setPassword(userRequestDTO.password());
         return newUser;
     }
@@ -46,7 +53,8 @@ public class UserMapper {
                 user.getLastName(),
                 user.getPhone(),
                 user.isActive(),
-                user.getUserRole(),
+                extractRoleNames(user.getRoles()),
+                extractPermissionNames(user.getRoles()),
                 user.getCreatedAt(),
                 user.getUpdatedAt());
     }
@@ -59,7 +67,33 @@ public class UserMapper {
         user.setLastName(dto.lastName());
         user.setPhone(dto.phone());
         user.setActive(dto.active());
-        user.setUserRole(dto.userRole());
         return user;
+    }
+
+    /**
+     * Estrae i nomi dei ruoli da un Set di entità Role.
+     */
+    public static Set<String> extractRoleNames(Set<Role> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return roles.stream()
+                .map(Role::getName)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Estrae i nomi delle permission (univoche) partendo da un Set di ruoli.
+     */
+    public static Set<String> extractPermissionNames(Set<Role> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return roles.stream()
+                // Assicura che le permission del ruolo non siano null
+                .filter(role -> role.getPermissions() != null)
+                .flatMap(role -> role.getPermissions().stream())
+                .map(Permission::getName)
+                .collect(Collectors.toSet());
     }
 }

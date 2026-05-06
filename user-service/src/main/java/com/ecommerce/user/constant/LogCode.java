@@ -27,6 +27,9 @@ public enum LogCode {
     // --- 2xx: Validation ---
     VALIDATION_FAILED("USR-200", "Validation failed"),
 
+    //--- 3xx: Authorization  ---
+    ACCESS_DENIED("USR-300", "Access Denied"),
+
     // --- 9xx: Unexpected / internal ---
     INTERNAL_ERROR("USR-900", "Unhandled internal error");
 

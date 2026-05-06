@@ -1,9 +1,11 @@
 package com.ecommerce.user.exception;
 
+import com.ecommerce.user.constant.ErrorConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,7 +18,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.ecommerce.user.constant.ErrorConstants.*;
+import static com.ecommerce.user.constant.ErrorConstant.*;
 import static com.ecommerce.user.constant.LogCode.*;
 
 @RestControllerAdvice
@@ -31,6 +33,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleUserNotFound(UserNotFoundException ex) {
         log.warn("[{}] {}: {}", USER_NOT_FOUND, USER_NOT_FOUND.description(), ex.getMessage());
         return createProblemDetail(ex, HttpStatus.NOT_FOUND, "Resource not found", TYPE_USER_NOT_FOUND);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        log.warn("[{}] {}: {}", ACCESS_DENIED, ACCESS_DENIED.description(), ex.getMessage());
+        return createProblemDetail(ex, HttpStatus.FORBIDDEN, "Resource Forbidden", TYPE_FORBIDDEN);
     }
 
     @ExceptionHandler(UserAlreadyExistsException.class)

@@ -3,7 +3,10 @@ package com.ecommerce.user.model;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
@@ -36,12 +39,16 @@ public class User {
     @Column(nullable = false, name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "user_role")
-    @Enumerated(EnumType.STRING)
-    private UserRole userRole;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles;
 
     public User(Long id, String username, String email, String password, String firstName, String lastName,
-            String phone, UserRole userRole) {
+            String phone) {
         this();
         this.id = id;
         this.username = username;
@@ -50,22 +57,18 @@ public class User {
         this.firstName = firstName;
         this.lastName = lastName;
         this.phone = phone;
-        this.userRole = userRole;
     }
 
     public User() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = this.createdAt;
         this.active = true;
+        this.roles = new HashSet<>();
     }
 
-    public UserRole getUserRole() {
-        return userRole;
-    }
+    public Set<Role> getRoles() { return roles; }
 
-    public void setUserRole(UserRole userRole) {
-        this.userRole = userRole;
-    }
+    public void setRoles(Set<Role> roles) { this.roles = roles; }
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
@@ -152,10 +155,27 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public enum UserRole {
-        CUSTOMER,
-        SELLER,
-        ADMIN
+    /**
+     * Helper method per aggiungere un ruolo
+     */
+    public void addRole(Role role) {
+        this.roles.add(role);
+    }
+
+    /**
+     * Helper method per rimuovere un ruolo
+     */
+    public void removeRole(Role role) {
+        this.roles.remove(role);
+    }
+
+    /**
+     * Ottiene tutte le permissions da tutti i ruoli
+     */
+    public Set<Permission> getAllPermissions() {
+        return roles.stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .collect(Collectors.toSet());
     }
 
     @Override
@@ -184,7 +204,6 @@ public class User {
                 ", active=" + active +
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
-                ", userRole=" + userRole +
                 '}';
     }
 }

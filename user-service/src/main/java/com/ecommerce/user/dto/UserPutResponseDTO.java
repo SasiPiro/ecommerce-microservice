@@ -4,6 +4,7 @@ import com.ecommerce.user.model.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Schema(description = "User data returned after a full update (PUT)")
 public record UserPutResponseDTO(
@@ -21,7 +22,9 @@ public record UserPutResponseDTO(
 
                 @Schema(description = "Account active status", example = "true") boolean active,
 
-                @Schema(description = "User role", example = "SELLER") User.UserRole userRole,
+                @Schema(description = "Assigned role", example = "ADMIN") Set<String> roles,
+
+                @Schema(description = "Assigned permission", example = "user.read") Set<String> permissions,
 
                 @Schema(description = "Account creation timestamp", example = "2025-01-15T10:30:00") LocalDateTime createdAt,
 
