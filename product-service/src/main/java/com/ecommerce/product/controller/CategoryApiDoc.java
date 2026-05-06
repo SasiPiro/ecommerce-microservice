@@ -4,12 +4,15 @@ import com.ecommerce.product.dto.CategoryRequestDto;
 import com.ecommerce.product.dto.CategoryResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -22,8 +25,15 @@ import org.springframework.data.domain.Pageable;
 /**
  * OpenAPI contract for the Category Management API.
  * All Swagger/OpenAPI documentation lives here; the implementing controller
- * stays focused on Spring MVC routing and business logic.
+ * stays focused on Spring routing and business logic.
  */
+@SecurityScheme(
+        name = "bearerAuth",
+        type = SecuritySchemeType.HTTP,
+        bearerFormat = "JWT",
+        scheme = "bearer"
+)
+@SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Category Management", description = "Full CRUD operations for product categories within the e-commerce platform.")
 public interface CategoryApiDoc {
 

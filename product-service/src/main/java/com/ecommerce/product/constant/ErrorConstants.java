@@ -12,5 +12,6 @@ public final class ErrorConstants {
     public static final URI TYPE_PRODUCT_NOT_FOUND = URI.create(BASE_URL + "product-not-found");
     public static final URI TYPE_PRODUCT_CONFLICT = URI.create(BASE_URL + "product-already-exists");
     public static final URI TYPE_VALIDATION_ERROR = URI.create(BASE_URL + "validation-error");
+    public static final URI TYPE_FORBIDDEN = URI.create(BASE_URL + "forbidden");
     public static final URI TYPE_GENERIC_ERROR = URI.create(BASE_URL + "internal-server-error");
 }

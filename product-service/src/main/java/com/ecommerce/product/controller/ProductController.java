@@ -4,11 +4,13 @@ import com.ecommerce.product.dto.ProductRequestDto;
 import com.ecommerce.product.dto.ProductResponseDto;
 import com.ecommerce.product.dto.ProductStockRequestDto;
 import com.ecommerce.product.service.ProductService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -29,6 +31,8 @@ public class ProductController implements ProductApiDoc {
 
     @Override
     @PostMapping
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("hasAuthority('product.write')")
     public ResponseEntity<ProductResponseDto> createProduct(@Valid @RequestBody ProductRequestDto dto) {
         log.info("Creating product: {}", dto.name());
         ProductResponseDto response = productService.createProduct(dto);
@@ -38,13 +42,15 @@ public class ProductController implements ProductApiDoc {
     }
 
     @Override
-    @GetMapping
+    @GetMapping("/all")
     public List<ProductResponseDto> getAllProducts() {
         return productService.getAllProducts();
     }
 
     @Override
     @GetMapping("/{id}")
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("hasAuthority('product.read')")
     public ProductResponseDto getById(@PathVariable Long id) {
         return productService.findById(id);
     }
@@ -64,6 +70,8 @@ public class ProductController implements ProductApiDoc {
 
     @Override
     @PutMapping("/{id}")
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("hasAuthority('product.write')")
     public ProductResponseDto updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequestDto dto) {
         log.info("Full update (PUT) - product id: {}", id);
         return productService.updateProduct(id, dto);
@@ -71,6 +79,8 @@ public class ProductController implements ProductApiDoc {
 
     @Override
     @PatchMapping("/{id}/stock")
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("hasAuthority('product.write')")
     public ProductResponseDto patchStock(@PathVariable Long id, @Valid @RequestBody ProductStockRequestDto dto) {
         log.info("Patching stock - product id: {}", id);
         return productService.patchStock(id, dto);
@@ -78,6 +88,8 @@ public class ProductController implements ProductApiDoc {
 
     @Override
     @DeleteMapping("/{id}")
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("hasAuthority('product.delete')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteProduct(@PathVariable Long id) {
         log.info("Deleting product id: {}", id);

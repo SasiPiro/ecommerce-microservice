@@ -9,6 +9,7 @@ package com.ecommerce.product.constant;
  * <li>{@code 0xx} = not-found errors</li>
  * <li>{@code 1xx} = conflict / uniqueness errors</li>
  * <li>{@code 2xx} = validation errors</li>
+ * <li>{@code 3xx} = authorization errors</li>
  * <li>{@code 9xx} = unexpected / internal errors</li>
  * </ul>
  * These codes are designed to be machine-parseable by ELK, Datadog, Grafana
@@ -27,6 +28,9 @@ public enum LogCode {
 
     // --- 2xx: Validation ---
     VALIDATION_FAILED("PRD-200", "Validation failed"),
+
+    //--- 3xx: Authorization  ---
+    ACCESS_DENIED("PRD-300", "Access Denied"),
 
     // --- 9xx: Unexpected / internal ---
     INTERNAL_ERROR("PRD-900", "Unhandled internal error");

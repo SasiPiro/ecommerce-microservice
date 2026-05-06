@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -51,6 +52,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("[{}] {}: {}", PRODUCT_NAME_ALREADY_EXISTS, PRODUCT_NAME_ALREADY_EXISTS.description(),
                 ex.getMessage());
         return createProblemDetail(ex, HttpStatus.CONFLICT, "Data conflict", TYPE_PRODUCT_CONFLICT);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        log.warn("[{}] {}: {}", ACCESS_DENIED, ACCESS_DENIED.description(), ex.getMessage());
+        return createProblemDetail(ex, HttpStatus.FORBIDDEN, "Resource Forbidden", TYPE_FORBIDDEN);
     }
 
     // --- 2. OVERRIDE STANDARD METHOD (DTO VALIDATION) ---
