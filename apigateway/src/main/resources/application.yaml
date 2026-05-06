@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: apigateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            # User Service
+            - id: user-service
+              uri: ${USER_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/users/**, /api/v1/auth/**, /v3/api-docs/user-service
+              filters:
+                - RewritePath=/v3/api-docs/user-service, /v3/api-docs
+
+            # Product Service
+            - id: product-service
+              uri: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/products/**, /api/v1/categories/**, /v3/api-docs/product-service
+              filters:
+                - RewritePath=/v3/api-docs/product-service, /v3/api-docs
+
+        # CORS globale
+        globalcors:
+          corsConfigurations:
+            '[/**]':
+              allowedOrigins: "*"
+              allowedMethods:
+                - GET
+                - POST
+                - PUT
+                - DELETE
+                - PATCH
+                - OPTIONS
+              allowedHeaders: "*"
+
+server:
+  port: 8989
+
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm-change-in-production}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  gateway:
+    enabled: true
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: user-service
+        url: /v3/api-docs/user-service
+      - name: product-service
+        url: /v3/api-docs/product-service
