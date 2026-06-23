@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -28,6 +29,7 @@ public class UserController implements UserApiDoc {
 
         @Override
         @PostMapping
+        @PreAuthorize("hasAuthority('user.write')")
         public ResponseEntity<UserResponseDTO> createUser(@Valid @RequestBody UserRequestDTO dto) {
                 log.info("Creating user: {}", dto.username());
                 UserResponseDTO response = userService.createUser(dto);
@@ -38,24 +40,28 @@ public class UserController implements UserApiDoc {
 
         @Override
         @GetMapping
+        @PreAuthorize("hasAuthority('user.read')")
         public Page<UserResponseDTO> getAllUsers(@PageableDefault(sort = "id") Pageable pageable) {
                 return userService.getAllUsers(pageable);
         }
 
         @Override
         @GetMapping("/{id}")
+        @PreAuthorize("hasAuthority('user.read')")
         public UserResponseDTO getById(@PathVariable Long id) {
                 return userService.findById(id);
         }
 
         @Override
         @GetMapping("/search-username")
+        @PreAuthorize("hasAuthority('user.read')")
         public UserResponseDTO getByUsername(@RequestParam String username) {
                 return userService.findByUsername(username);
         }
 
         @Override
         @PutMapping("/{id}")
+        @PreAuthorize("hasAuthority('user.write')")
         public UserPutResponseDTO updateFull(@PathVariable Long id, @Valid @RequestBody UserPutRequestDTO dto) {
                 log.info("Full update (PUT) - user id: {}", id);
                 return userService.putUser(id, dto);
@@ -63,6 +69,7 @@ public class UserController implements UserApiDoc {
 
         @Override
         @PatchMapping("/{id}")
+        @PreAuthorize("hasAuthority('user.write')")
         public UserResponseDTO updatePartial(@PathVariable Long id, @Valid @RequestBody UserPatchRequestDTO dto) {
                 log.info("Partial update (PATCH) - user id: {}", id);
                 return userService.patchUser(id, dto);
@@ -70,6 +77,7 @@ public class UserController implements UserApiDoc {
 
         @Override
         @DeleteMapping("/{id}")
+        @PreAuthorize("hasAuthority('user.delete')")
         @ResponseStatus(HttpStatus.NO_CONTENT)
         public void delete(@PathVariable Long id) {
                 log.info("Deleting user id: {}", id);
