@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -29,6 +30,7 @@ public class CategoryController implements CategoryApiDoc {
 
     @Override
     @PostMapping
+    @PreAuthorize("hasAuthority('category.write')")
     public ResponseEntity<CategoryResponseDto> createCategory(@Valid @RequestBody CategoryRequestDto dto) {
         log.info("Creating category: {}", dto.name());
         CategoryResponseDto response = categoryService.createCategory(dto);
@@ -39,18 +41,21 @@ public class CategoryController implements CategoryApiDoc {
 
     @Override
     @GetMapping
+    @PreAuthorize("hasAuthority('category.read')")
     public Page<CategoryResponseDto> getAllCategories(@PageableDefault(sort = "id") Pageable pageable) {
         return categoryService.getAllCategories(pageable);
     }
 
     @Override
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('category.read')")
     public CategoryResponseDto getById(@PathVariable Long id) {
         return categoryService.findById(id);
     }
 
     @Override
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('category.write')")
     public CategoryResponseDto updateCategory(@PathVariable Long id, @Valid @RequestBody CategoryRequestDto dto) {
         log.info("Updating category id: {}", id);
         return categoryService.updateCategory(id, dto);
@@ -58,6 +63,7 @@ public class CategoryController implements CategoryApiDoc {
 
     @Override
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('category.delete')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCategory(@PathVariable Long id) {
         log.info("Deleting category id: {}", id);
